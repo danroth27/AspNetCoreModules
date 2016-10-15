@@ -1,4 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting.Internal;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,10 +12,12 @@ namespace Microsoft.AspNetCore.Modules
 {
     public class ModuleMiddleware
     {
-        private readonly RequestDelegate _next;
-        private readonly ModuleOptions _options;
+        readonly RequestDelegate _next;
+        readonly ModuleOptions _options;
+        readonly RequestDelegate _module;
+        IServiceScopeFactory _scopeFactory;
 
-        public ModuleMiddleware(RequestDelegate next, ModuleOptions options)
+        public ModuleMiddleware(RequestDelegate next, ModuleOptions options, IServiceScopeFactory scopeFactory)
         {
             if (next == null)
             {
@@ -23,8 +29,18 @@ namespace Microsoft.AspNetCore.Modules
                 throw new ArgumentNullException(nameof(options));
             }
 
+            if (scopeFactory == null)
+            {
+                throw new ArgumentNullException(nameof(scopeFactory));
+            }
+
             _next = next;
             _options = options;
+            _scopeFactory = scopeFactory;
+
+            _options.ModuleBuilder.UseMiddleware<EndModuleMiddleware>();
+            _options.ModuleBuilder.Run(_next);
+            _module = _options.ModuleBuilder.Build();
         }
 
         /// <summary>
@@ -39,12 +55,46 @@ namespace Microsoft.AspNetCore.Modules
                 throw new ArgumentNullException(nameof(context));
             }
 
-            await _options.Module(context);
+            var beginModule = new BeginModuleFeature();
+            beginModule.OriginalRequestServices = context.RequestServices;
+            context.RequestServices = _scopeFactory.CreateScope().ServiceProvider;
+            // TODO: How to ensure the module request servces get disposed?
 
-            if (context.Features.Get<IRequestNotHandledFeature>() != null)
+            PathString matchedPath;
+            PathString remainingPath;
+
+            if (context.Request.Path.StartsWithSegments(_options.PathBase, out matchedPath, out remainingPath))
             {
-                await _next(context);
+                beginModule.PathBaseMatched = true;
+                beginModule.OriginalPath = context.Request.Path;
+                beginModule.OriginalPathBase = context.Request.PathBase;
+                context.Request.Path = remainingPath;
+                context.Request.PathBase = beginModule.OriginalPathBase.Add(matchedPath);
+
+                try
+                {
+                    context.Features.Set<IBeginModuleFeature>(beginModule);
+                    await _module(context);
+                }
+                finally
+                {
+                    context.Request.Path = beginModule.OriginalPath;
+                    context.Request.PathBase = beginModule.OriginalPathBase;
+                    context.RequestServices = beginModule.OriginalRequestServices;
+                }
             }
+            else
+            {
+                try
+                {
+                    context.Features.Set<IBeginModuleFeature>(beginModule);
+                    await _module(context);
+                }
+                finally
+                {
+                    context.RequestServices = beginModule.OriginalRequestServices;
+                }
+            }            
         }
     }
 }

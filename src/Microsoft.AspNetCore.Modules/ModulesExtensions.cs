@@ -89,21 +89,13 @@ namespace Microsoft.AspNetCore.Modules
             // Setup the module pipeline
             var moduleBuilder = app.New();
             moduleBuilder.ApplicationServices = moduleServices.BuildServiceProvider();
-            if (pathBase != PathString.Empty)
-            {
-                moduleBuilder.UsePathBase(pathBase);
-            }
-            moduleBuilder.UseMiddleware<RequestServicesContainerMiddleware>();
             moduleStartupMethods.ConfigureDelegate(moduleBuilder);
-            moduleBuilder.UseMiddleware<RequestNotHandledMiddleware>();
-            var module = moduleBuilder.Build();
 
-            var options = new ModuleOptions
+            return app.UseMiddleware<ModuleMiddleware>(new ModuleOptions
             {
-                Module = module
-            };
-
-            return app.UseMiddleware<ModuleMiddleware>(options);
+                ModuleBuilder = moduleBuilder,
+                PathBase = pathBase
+            });
         }
 
     }

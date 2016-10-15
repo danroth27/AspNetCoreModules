@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace Module1.Controllers
 {
-    public class MessageController
+    // TODO: When the module is directly reference should this controller be found by the app?
+    public class MessageController : Controller
     {
         [HttpGet("api/message")]
         public string GetMessage()

@@ -51,7 +51,7 @@ namespace WebApplication1
                 app.UseExceptionHandler("/Home/Error");
             }
 
-            app.UseModule<Module1.Startup>();
+            app.UseModule<Module1.Startup>("/modules");
 
             app.UseStaticFiles();
 

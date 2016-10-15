@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 
 namespace Microsoft.AspNetCore.Modules
 {
@@ -7,6 +8,8 @@ namespace Microsoft.AspNetCore.Modules
         /// <summary>
         /// The branch taken for a positive match.
         /// </summary>
-        public RequestDelegate Module { get; set; }
+        public IApplicationBuilder ModuleBuilder { get; set; }
+
+        public PathString PathBase { get; set; }
     }
 }
