@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Builder.Internal;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Internal;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Modules.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
@@ -21,6 +23,7 @@ namespace Microsoft.AspNetCore.Modules
             // - Determine order, path base, content root, assembly name (app name)
             // Call into modules to add application services
 
+            
             // Hack to make hosting services available to modules
             var copy = new ServiceCollection();
             foreach (var sd in services)
@@ -28,8 +31,6 @@ namespace Microsoft.AspNetCore.Modules
                 copy.Add(sd);
             }
             services.AddSingleton<IServiceCollection>(copy);
-
-
         }
 
         public static void UseModules(this IApplicationBuilder app)
@@ -63,38 +64,57 @@ namespace Microsoft.AspNetCore.Modules
             var moduleStartupType = typeof(TStartup);
             var moduleAssemblyName = moduleStartupType.GetTypeInfo().Assembly.GetName().Name;
             var env = app.ApplicationServices.GetService<IHostingEnvironment>();
-            var moduleStartupMethods = StartupLoader.LoadMethods(app.ApplicationServices, moduleStartupType, env.EnvironmentName);
+
 
             // Create the module environment
-            var moduleEnv = new HostingEnvironment()
-            {
-                EnvironmentName = env.EnvironmentName,
-                ApplicationName = moduleAssemblyName,
+            var moduleOptions = new WebHostOptions() { Environment = env.EnvironmentName };
+            // TODO: Module configuration support
+            var moduleEnv = new HostingEnvironment();
+            moduleEnv.Initialize(
+                applicationName: moduleAssemblyName,
+                contentRootPath: Path.Combine(env.ContentRootPath, "..", moduleAssemblyName),
                 // TODO: Figure out content roots for modules
-                ContentRootPath = Path.Combine(env.ContentRootPath, "..", moduleAssemblyName)
-                // TODO: Support this in hosting
-                // moduleEnv.PathBase = "/hello";
-            };
+                options: new WebHostOptions());
+            // TODO: Support this in hosting
+            // moduleEnv.PathBase = "/hello";
 
             // Setup the module services
-            var hostingServices = app.ApplicationServices.GetService<IServiceCollection>();
             var moduleServices = new ServiceCollection();
+            // - Copy over the hosting services from the app that were saved previously in AddModules()
+            var hostingServices = app.ApplicationServices.GetService<IServiceCollection>();
             foreach (var sd in hostingServices)
             {
                 moduleServices.Add(sd);
             }
-            moduleServices.AddSingleton(moduleEnv);
-            moduleStartupMethods.ConfigureServicesDelegate(moduleServices);
+            // - Add the module hosting environment to replace the app hosting environment
+            moduleServices.AddSingleton<IHostingEnvironment>(moduleEnv);
+            // - Add a shared service provider to allow access to app services
+            moduleServices.AddSingleton<ISharedServiceProvider>(new SharedServiceProvider(app.ApplicationServices));
+            // - Add module specific services
+            moduleServices.AddSingleton<IStartup>(sp =>
+            {
+                var hostingEnvironment = sp.GetRequiredService<IHostingEnvironment>();
+                return new ConventionBasedStartup(StartupLoader.LoadMethods(sp, moduleStartupType, hostingEnvironment.EnvironmentName));
+            });
+            var moduleHostingServiceProvider = moduleServices.BuildServiceProvider();
+            var moduleStartup = moduleHostingServiceProvider.GetRequiredService<IStartup>();
+            var moduleServiceProvider = moduleStartup.ConfigureServices(moduleServices);
 
             // Setup the module pipeline
-            var moduleBuilder = app.New();
-            moduleBuilder.ApplicationServices = moduleServices.BuildServiceProvider();
-            moduleStartupMethods.ConfigureDelegate(moduleBuilder);
-
-            return app.UseMiddleware<ModuleMiddleware>(new ModuleOptions
+            var moduleBuilder = new ApplicationBuilder(moduleServiceProvider, app.ServerFeatures);
+            moduleBuilder.UseMiddleware<BeginModuleMiddleware>(new ModuleOptions
             {
                 ModuleBuilder = moduleBuilder,
                 PathBase = pathBase
+            });
+            moduleStartup.Configure(moduleBuilder);
+            moduleBuilder.UseMiddleware<EndModuleMiddleware>();
+
+            return app.Use(next =>
+            {
+                moduleBuilder.Run(next);
+                var module = moduleBuilder.Build();
+                return context => module(context);
             });
         }
 

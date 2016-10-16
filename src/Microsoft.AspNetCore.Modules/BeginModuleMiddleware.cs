@@ -10,14 +10,13 @@ using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Modules
 {
-    public class ModuleMiddleware
+    public class BeginModuleMiddleware
     {
         readonly RequestDelegate _next;
-        readonly ModuleOptions _options;
-        readonly RequestDelegate _module;
+        readonly ModuleOptions _options;      
         IServiceScopeFactory _scopeFactory;
 
-        public ModuleMiddleware(RequestDelegate next, ModuleOptions options, IServiceScopeFactory scopeFactory)
+        public BeginModuleMiddleware(RequestDelegate next, ModuleOptions options, IServiceScopeFactory scopeFactory)
         {
             if (next == null)
             {
@@ -37,10 +36,6 @@ namespace Microsoft.AspNetCore.Modules
             _next = next;
             _options = options;
             _scopeFactory = scopeFactory;
-
-            _options.ModuleBuilder.UseMiddleware<EndModuleMiddleware>();
-            _options.ModuleBuilder.Run(_next);
-            _module = _options.ModuleBuilder.Build();
         }
 
         /// <summary>
@@ -58,6 +53,11 @@ namespace Microsoft.AspNetCore.Modules
             var beginModule = new BeginModuleFeature();
             beginModule.OriginalRequestServices = context.RequestServices;
             context.RequestServices = _scopeFactory.CreateScope().ServiceProvider;
+            var httpContextAccessor = context.RequestServices.GetService<IHttpContextAccessor>();
+            if (httpContextAccessor != null)
+            {
+                httpContextAccessor.HttpContext = context;
+            }
             // TODO: How to ensure the module request servces get disposed?
 
             PathString matchedPath;
@@ -74,7 +74,7 @@ namespace Microsoft.AspNetCore.Modules
                 try
                 {
                     context.Features.Set<IBeginModuleFeature>(beginModule);
-                    await _module(context);
+                    await _next(context);
                 }
                 finally
                 {
@@ -88,7 +88,7 @@ namespace Microsoft.AspNetCore.Modules
                 try
                 {
                     context.Features.Set<IBeginModuleFeature>(beginModule);
-                    await _module(context);
+                    await _next(context);
                 }
                 finally
                 {

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Modules.Abstractions
 {
-    interface IApplicationServiceProvider : IServiceProvider
+    public interface ISharedServiceProvider : IServiceProvider
     {
     }
 }
