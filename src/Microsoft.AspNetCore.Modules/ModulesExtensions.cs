@@ -82,9 +82,21 @@ namespace Microsoft.AspNetCore.Modules
             var moduleServices = new ServiceCollection();
             // - Copy over the hosting services from the app that were saved previously in AddModules()
             var hostingServices = app.ApplicationServices.GetService<IServiceCollection>();
+            var hostingServiceProvider = app.ApplicationServices;
             foreach (var sd in hostingServices)
             {
-                moduleServices.Add(sd);
+                if (sd.ServiceType == typeof(IHostingEnvironment)) continue;
+                if (!sd.ServiceType.GetTypeInfo().IsGenericTypeDefinition)
+                {
+                    moduleServices.Add(ServiceDescriptor.Describe(
+                        sd.ServiceType,
+                        sp => hostingServiceProvider.GetService(sd.ServiceType),
+                        sd.Lifetime));
+                }
+                else
+                {
+                    moduleServices.Add(sd);
+                }
             }
             // - Add the module hosting environment to replace the app hosting environment
             moduleServices.AddSingleton<IHostingEnvironment>(moduleEnv);

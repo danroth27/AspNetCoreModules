@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Module1;
 using Microsoft.AspNetCore.Modules;
+using System.Diagnostics;
 
 namespace WebApplication1
 {
@@ -16,6 +17,7 @@ namespace WebApplication1
     {
         public Startup(IHostingEnvironment env)
         {
+            // comments!!
             var builder = new ConfigurationBuilder()
                 .SetBasePath(env.ContentRootPath)
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
@@ -33,11 +35,15 @@ namespace WebApplication1
 
             // Add framework services.
             services.AddMvc();
+
+            services.AddMiddlewareAnalysis();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory, DiagnosticListener diagnosticListener)
         {
+            diagnosticListener.SubscribeWithAdapter(new TestDiagnosticListener());
+
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug(LogLevel.Information);
 

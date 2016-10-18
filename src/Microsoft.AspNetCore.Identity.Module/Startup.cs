@@ -47,7 +47,7 @@ namespace Microsoft.AspNetCore.Identity.Module
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
-            services.AddMvc();
+            var mvcBuilder = services.AddMvc();
 
             // Add application services.
             services.AddTransient<IEmailSender, AuthMessageSender>();
@@ -57,6 +57,9 @@ namespace Microsoft.AspNetCore.Identity.Module
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
+            var logger = loggerFactory.CreateLogger<Startup>();
+            logger.LogInformation("Application name: {applicationName}", env.ApplicationName);
+
             app.UseStaticFiles();
 
             app.UseIdentity();

@@ -52,49 +52,54 @@ namespace Microsoft.AspNetCore.Modules
 
             var beginModule = new BeginModuleFeature();
             beginModule.OriginalRequestServices = context.RequestServices;
-            context.RequestServices = _scopeFactory.CreateScope().ServiceProvider;
-            var httpContextAccessor = context.RequestServices.GetService<IHttpContextAccessor>();
-            if (httpContextAccessor != null)
-            {
-                httpContextAccessor.HttpContext = context;
-            }
-            // TODO: How to ensure the module request servces get disposed?
 
-            PathString matchedPath;
-            PathString remainingPath;
-
-            if (context.Request.Path.StartsWithSegments(_options.PathBase, out matchedPath, out remainingPath))
+            using (var scope = _scopeFactory.CreateScope())
             {
-                beginModule.PathBaseMatched = true;
-                beginModule.OriginalPath = context.Request.Path;
-                beginModule.OriginalPathBase = context.Request.PathBase;
-                context.Request.Path = remainingPath;
-                context.Request.PathBase = beginModule.OriginalPathBase.Add(matchedPath);
+                context.RequestServices = scope.ServiceProvider;
+                var httpContextAccessor = context.RequestServices.GetService<IHttpContextAccessor>();
+                if (httpContextAccessor != null)
+                {
+                    httpContextAccessor.HttpContext = context;
+                }
+                // TODO: How to ensure the module request servces get disposed?
 
-                try
+                PathString matchedPath;
+                PathString remainingPath;
+
+                // Uses new StartsWithSegments API in ASP.NET Core 1.1
+                if (context.Request.Path.StartsWithSegments(_options.PathBase, out matchedPath, out remainingPath))
                 {
-                    context.Features.Set<IBeginModuleFeature>(beginModule);
-                    await _next(context);
+                    beginModule.PathBaseMatched = true;
+                    beginModule.OriginalPath = context.Request.Path;
+                    beginModule.OriginalPathBase = context.Request.PathBase;
+                    context.Request.Path = remainingPath;
+                    context.Request.PathBase = beginModule.OriginalPathBase.Add(matchedPath);
+
+                    try
+                    {
+                        context.Features.Set<IBeginModuleFeature>(beginModule);
+                        await _next(context);
+                    }
+                    finally
+                    {
+                        context.Request.Path = beginModule.OriginalPath;
+                        context.Request.PathBase = beginModule.OriginalPathBase;
+                        context.RequestServices = beginModule.OriginalRequestServices;
+                    }
                 }
-                finally
+                else
                 {
-                    context.Request.Path = beginModule.OriginalPath;
-                    context.Request.PathBase = beginModule.OriginalPathBase;
-                    context.RequestServices = beginModule.OriginalRequestServices;
+                    try
+                    {
+                        context.Features.Set<IBeginModuleFeature>(beginModule);
+                        await _next(context);
+                    }
+                    finally
+                    {
+                        context.RequestServices = beginModule.OriginalRequestServices;
+                    }
                 }
-            }
-            else
-            {
-                try
-                {
-                    context.Features.Set<IBeginModuleFeature>(beginModule);
-                    await _next(context);
-                }
-                finally
-                {
-                    context.RequestServices = beginModule.OriginalRequestServices;
-                }
-            }            
+            }        
         }
     }
 }

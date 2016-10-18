@@ -5,6 +5,8 @@
       "type": "platform"
     },
     "Microsoft.AspNetCore.Diagnostics": "1.1.0-*",
+    "Microsoft.Extensions.DiagnosticAdapter": "1.1.0-*",
+    "Microsoft.AspNetCore.MiddlewareAnalysis": "1.1.0-*",
     "Microsoft.AspNetCore.Mvc": "1.1.0-*",
     "Microsoft.AspNetCore.Razor.Tools": {
       "version": "1.0.0-preview3-*",
@@ -29,11 +31,11 @@
   "tools": {
     "BundlerMinifier.Core": "2.0.238",
     "Microsoft.AspNetCore.Razor.Tools": "1.0.0-preview3-*",
-    "Microsoft.AspNetCore.Server.IISIntegration.Tools": "1.0.0-preview3-*"
+    "Microsoft.AspNetCore.Server.IISIntegration.Tools": "1.0.0-preview2-*"
   },
 
   "frameworks": {
-    "netcoreapp1.0": {
+    "netcoreapp1.1": {
       "imports": [
         "dotnet5.6",
         "portable-net45+win8"
