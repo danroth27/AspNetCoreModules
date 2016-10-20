@@ -12,7 +12,7 @@ namespace Module1.Controllers
         [HttpGet("api/message")]
         public string GetMessage()
         {
-            return "Hello from MVC in Module1!";
+            return "Hello from Web API in Module1!";
         }
     }
 }

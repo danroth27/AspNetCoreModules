@@ -33,8 +33,9 @@
                     <li><a asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
                     <li><a asp-area="" asp-controller="Home" asp-action="About">About</a></li>
                     <li><a asp-area="" asp-controller="Home" asp-action="Contact">Contact</a></li>
-                </ul>
-                @await Modules.PartialAsync("_LoginPartial", "Microsoft.AspNetCore.Identity.Module")
+                </ul>)
+                @*@await Html.ModulePartialAsync("_LoginPartial", "Microsoft.AspNetCore.Identity.Module")*@
+                @Html.ModulePartial("_LoginPartial")
             </div>
         </div>
     </div>

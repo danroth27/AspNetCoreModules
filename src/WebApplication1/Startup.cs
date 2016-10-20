@@ -33,9 +33,7 @@ namespace WebApplication1
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddModules();
-            services.AddModulesMvc();
 
-            // Add framework services.
             services.AddMvc();
 
             services.AddMiddlewareAnalysis();
