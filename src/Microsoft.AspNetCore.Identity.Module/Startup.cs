@@ -66,7 +66,7 @@ namespace Microsoft.AspNetCore.Identity.Module
             var templateManager = sharedServices.GetService<ITemplateManager>();
             templateManager?.AddTemplate(
                 "Microsoft.AspNetCore.Identity.Module.Title",
-                model => Task.FromResult<IHtmlContent>(new HtmlString("<b>Microsoft.AspNetCore.Identity.Module</b>")));
+                model => Task.FromResult<IHtmlContent>(new HtmlString("<b>Template from Microsoft.AspNetCore.Identity.Module</b>")));
 
             var htmlHelper = app.ApplicationServices.GetService<IHtmlHelper>();
             (htmlHelper as IViewContextAware)?.Contextualize(new ViewContext());
