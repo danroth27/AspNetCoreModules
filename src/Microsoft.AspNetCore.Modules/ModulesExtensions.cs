@@ -23,7 +23,6 @@ namespace Microsoft.AspNetCore.Modules
             // - Determine order, path base, content root, assembly name (app name)
             // Call into modules to add application services
 
-            
             // Hack to make hosting services available to modules
             var copy = new ServiceCollection();
             foreach (var sd in services)
@@ -31,6 +30,10 @@ namespace Microsoft.AspNetCore.Modules
                 copy.Add(sd);
             }
             services.AddSingleton<IServiceCollection>(copy);
+
+            services.AddSingleton<ITemplateManager>(new TemplateManager());
+
+            services.AddTransient<IModulesHtmlHelper, ModulesHtmlHelper>();
         }
 
         public static void UseModules(this IApplicationBuilder app)
@@ -72,7 +75,7 @@ namespace Microsoft.AspNetCore.Modules
             var moduleEnv = new HostingEnvironment();
             moduleEnv.Initialize(
                 applicationName: moduleAssemblyName,
-                contentRootPath: Path.Combine(env.ContentRootPath, "..", moduleAssemblyName),
+                contentRootPath: Path.Combine(new DirectoryInfo(env.ContentRootPath).Parent.FullName, moduleAssemblyName),
                 // TODO: Figure out content roots for modules
                 options: new WebHostOptions());
             // TODO: Support this in hosting

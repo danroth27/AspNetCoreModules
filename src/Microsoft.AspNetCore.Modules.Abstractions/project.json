@@ -3,7 +3,8 @@
 
   "dependencies": {
     "NETStandard.Library": "1.6.1-*",
-    "System.ComponentModel": "4.3.0-*"
+    "System.ComponentModel": "4.3.0-*",
+    "Microsoft.AspNetCore.Html.Abstractions": "1.1.0-*"
   },
 
   "frameworks": {
