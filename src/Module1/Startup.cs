@@ -10,6 +10,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Modules.Abstractions;
 using Microsoft.AspNetCore.ViewTemplates;
 using Microsoft.AspNetCore.Html;
+using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Modules;
+using Microsoft.AspNetCore.Http;
 
 namespace Module1
 {
@@ -23,7 +26,7 @@ namespace Module1
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IOptions<ModuleOptions> moduleOptions)
         {
             app.ShareTemplate("Module1.Test", model => Task.FromResult<IHtmlContent>(new HtmlString("<b>View template from Module1</b>")));
 
@@ -32,7 +35,10 @@ namespace Module1
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseMvcWithDefaultRoute();
+            app.UseModuleRoutePrefix(subApp =>
+            {
+                subApp.UseMvcWithDefaultRoute();
+            });
         }
     }
 }

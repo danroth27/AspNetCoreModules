@@ -5,11 +5,8 @@ namespace Microsoft.AspNetCore.Modules
 {
     public class ModuleOptions
     {
-        /// <summary>
-        /// The branch taken for a positive match.
-        /// </summary>
-        public IApplicationBuilder ModuleBuilder { get; set; }
+        public PathString RoutePrefix { get; set; }
 
-        public PathString PathBase { get; set; }
+        // TODO: Add a configuration property?
     }
 }

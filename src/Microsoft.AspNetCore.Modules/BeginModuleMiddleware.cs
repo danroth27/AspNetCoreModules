@@ -12,20 +12,14 @@ namespace Microsoft.AspNetCore.Modules
 {
     public class BeginModuleMiddleware
     {
-        readonly RequestDelegate _next;
-        readonly ModuleOptions _options;      
+        readonly RequestDelegate _next;    
         IServiceScopeFactory _scopeFactory;
 
-        public BeginModuleMiddleware(RequestDelegate next, ModuleOptions options, IServiceScopeFactory scopeFactory)
+        public BeginModuleMiddleware(RequestDelegate next, IServiceScopeFactory scopeFactory)
         {
             if (next == null)
             {
                 throw new ArgumentNullException(nameof(next));
-            }
-
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
             }
 
             if (scopeFactory == null)
@@ -34,7 +28,6 @@ namespace Microsoft.AspNetCore.Modules
             }
 
             _next = next;
-            _options = options;
             _scopeFactory = scopeFactory;
         }
 
@@ -61,43 +54,15 @@ namespace Microsoft.AspNetCore.Modules
                 {
                     httpContextAccessor.HttpContext = context;
                 }
-                // TODO: How to ensure the module request servces get disposed?
 
-                PathString matchedPath;
-                PathString remainingPath;
-
-                // Uses new StartsWithSegments API in ASP.NET Core 1.1
-                if (context.Request.Path.StartsWithSegments(_options.PathBase, out matchedPath, out remainingPath))
+                try
                 {
-                    beginModule.PathBaseMatched = true;
-                    beginModule.OriginalPath = context.Request.Path;
-                    beginModule.OriginalPathBase = context.Request.PathBase;
-                    context.Request.Path = remainingPath;
-                    context.Request.PathBase = beginModule.OriginalPathBase.Add(matchedPath);
-
-                    try
-                    {
-                        context.Features.Set<IBeginModuleFeature>(beginModule);
-                        await _next(context);
-                    }
-                    finally
-                    {
-                        context.Request.Path = beginModule.OriginalPath;
-                        context.Request.PathBase = beginModule.OriginalPathBase;
-                        context.RequestServices = beginModule.OriginalRequestServices;
-                    }
+                    context.Features.Set<IBeginModuleFeature>(beginModule);
+                    await _next(context);
                 }
-                else
+                finally
                 {
-                    try
-                    {
-                        context.Features.Set<IBeginModuleFeature>(beginModule);
-                        await _next(context);
-                    }
-                    finally
-                    {
-                        context.RequestServices = beginModule.OriginalRequestServices;
-                    }
+                    context.RequestServices = beginModule.OriginalRequestServices;
                 }
             }        
         }

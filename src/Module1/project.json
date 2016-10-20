@@ -11,7 +11,7 @@
       "type": "build"
     },
     "Microsoft.AspNetCore.Server.Kestrel": "1.1.0-*",
-    "Microsoft.AspNetCore.Modules.Abstractions": "1.0.0-*",
+    "Microsoft.AspNetCore.Modules.Mvc": "1.0.0-*",
     "Microsoft.AspNetCore.ViewTemplates": "1.0.0-*"
   },
 

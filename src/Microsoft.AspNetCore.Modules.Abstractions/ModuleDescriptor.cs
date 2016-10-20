@@ -11,8 +11,6 @@ namespace Microsoft.AspNetCore.Modules.Abstractions
     {
         public string Name { get; set; }
 
-        public PathString PathBase { get; set; }
-
         public IHostingEnvironment HostingEnvironment { get; set; }
 
         public IServiceProvider ModuleServices { get; set; }

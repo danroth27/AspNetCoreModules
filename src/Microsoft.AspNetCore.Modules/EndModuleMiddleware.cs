@@ -17,27 +17,20 @@ namespace Microsoft.AspNetCore.Modules
 
         public async Task Invoke(HttpContext context)
         {
-            var modulePathBase = context.Request.PathBase;
-            var modulePath = context.Request.Path;
             var moduleRequestServices = context.RequestServices;
 
             var beginModule = context.Features.Get<IBeginModuleFeature>();
             context.Features.Set<IBeginModuleFeature>(null);
-            if (beginModule.PathBaseMatched)
-            {
-                context.Request.PathBase = beginModule.OriginalPathBase;
-                context.Request.Path = beginModule.OriginalPath;
-            }
             context.RequestServices = beginModule.OriginalRequestServices;
 
-            await _next(context);
-
-            if (beginModule.PathBaseMatched)
+            try
             {
-                context.Request.PathBase = modulePathBase;
-                context.Request.Path = modulePath;
+                await _next(context);
             }
-            context.RequestServices = moduleRequestServices;
+            finally
+            {
+                context.RequestServices = moduleRequestServices;
+            }
         }
     }
 }

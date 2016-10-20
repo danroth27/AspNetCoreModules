@@ -8,11 +8,6 @@ namespace Microsoft.AspNetCore.Modules
 {
     public class BeginModuleFeature : IBeginModuleFeature
     {
-        public bool PathBaseMatched { get; set; }
-
-        public PathString OriginalPathBase { get; set; }
-        public PathString OriginalPath { get; set; }
-
         public IServiceProvider OriginalRequestServices { get; set; }
     }
 }
