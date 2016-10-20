@@ -34,12 +34,12 @@
                     <li><a asp-area="" asp-controller="Home" asp-action="About">About</a></li>
                     <li><a asp-area="" asp-controller="Home" asp-action="Contact">Contact</a></li>
                 </ul>
-                @*@await Modules.TemplateAsync("Microsoft.AspNetCore.Identity.Module.Login")*@
+                @await Modules.PartialAsync("_LoginPartial", "Microsoft.AspNetCore.Identity.Module")
             </div>
         </div>
     </div>
     <div class="container body-content">
-        @await Modules.TemplateAsync("Microsoft.AspNetCore.Identity.Module.Title")
+        @await Templates.RenderTemplateAsync("Module1.Test")
         @RenderBody()
         <hr />
         <footer>

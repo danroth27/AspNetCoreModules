@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Microsoft.AspNetCore.Modules.Abstractions
+namespace Microsoft.AspNetCore.ViewTemplates
 {
-    public interface ITemplateManager
+    public interface IViewTemplateManager
     {
         Task<IHtmlContent> RenderTemplateAsync(string templateName, object model);
 

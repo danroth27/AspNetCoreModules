@@ -1,14 +1,13 @@
 ﻿using Microsoft.AspNetCore.Html;
-using Microsoft.AspNetCore.Modules.Abstractions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Microsoft.AspNetCore.Modules
+namespace Microsoft.AspNetCore.ViewTemplates
 {
-    public class TemplateManager : ITemplateManager
+    public class ViewTemplateManager : IViewTemplateManager
     {
         IDictionary<string, Func<object, Task<IHtmlContent>>> _templates = new ConcurrentDictionary<string, Func<object, Task<IHtmlContent>>>();
 

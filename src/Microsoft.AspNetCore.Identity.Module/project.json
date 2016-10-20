@@ -44,7 +44,8 @@
       "version": "1.0.0-preview3-*",
       "type": "build"
     },
-    "Microsoft.AspNetCore.Modules.Abstractions": "1.0.0-*"
+    "Microsoft.AspNetCore.Modules.Abstractions": "1.0.0-*",
+    "Microsoft.AspNetCore.ViewTemplates": "1.0.0-*"
   },
 
   "tools": {

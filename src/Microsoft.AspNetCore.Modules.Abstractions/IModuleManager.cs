@@ -5,7 +5,12 @@ using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Modules.Abstractions
 {
-    interface IModuleManager
+    public interface IModuleManager
     {
+        IEnumerable<ModuleDescriptor> GetModules();
+
+        ModuleDescriptor GetModule(string name);
+
+        void AddModule(ModuleDescriptor module);
     }
 }

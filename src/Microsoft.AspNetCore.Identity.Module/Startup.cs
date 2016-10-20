@@ -60,22 +60,8 @@ namespace Microsoft.AspNetCore.Identity.Module
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory, ISharedServiceProvider sharedServices)
-        {
-
-            var templateManager = sharedServices.GetService<ITemplateManager>();
-            templateManager?.AddTemplate(
-                "Microsoft.AspNetCore.Identity.Module.Title",
-                model => Task.FromResult<IHtmlContent>(new HtmlString("<b>Template from Microsoft.AspNetCore.Identity.Module</b>")));
-
-            var htmlHelper = app.ApplicationServices.GetService<IHtmlHelper>();
-            (htmlHelper as IViewContextAware)?.Contextualize(new ViewContext());
-            templateManager?.AddTemplate("Microsoft.AspNetCore.Identity.Module.Login", model =>
-            {
-                var partialViewName = Path.Combine("Views", "Shared", "_LoginPartial.cshtml");
-                return htmlHelper.PartialAsync(partialViewName);
-            });
-                
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        {          
             var logger = loggerFactory.CreateLogger<Startup>();
             logger.LogInformation("Application name: {applicationName}", env.ApplicationName);
 

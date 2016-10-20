@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Modules.Abstractions;
+using Microsoft.AspNetCore.ViewTemplates;
+using Microsoft.AspNetCore.Html;
 
 namespace Module1
 {
@@ -16,8 +19,13 @@ namespace Module1
             services.AddMvc();
         }
 
-        public static void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory)
+        public static void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory, ISharedServiceProvider sharedServices)
         {
+            var templateManager = sharedServices.GetService<IViewTemplateManager>();
+            templateManager?.AddTemplate(
+                "Module1.Test",
+                model => Task.FromResult<IHtmlContent>(new HtmlString("<b>View template from Module1</b>")));
+
             app.UseDeveloperExceptionPage();
             app.UseMvc();
         }

@@ -25,7 +25,9 @@
     "Microsoft.VisualStudio.Web.BrowserLink.Loader": "14.0.0",
     "Microsoft.AspNetCore.Modules": "1.0.0-*",
     "Module1": "1.0.0-*",
-    "Microsoft.AspNetCore.Identity.Module": "1.0.0-*"
+    "Microsoft.AspNetCore.Identity.Module": "1.0.0-*",
+    "Microsoft.AspNetCore.ViewTemplates": "1.0.0-*",
+    "Microsoft.AspNetCore.Modules.Mvc": "1.0.0-*",
   },
 
   "tools": {

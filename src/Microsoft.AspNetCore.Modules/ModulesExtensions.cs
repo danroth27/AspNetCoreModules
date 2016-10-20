@@ -31,9 +31,7 @@ namespace Microsoft.AspNetCore.Modules
             }
             services.AddSingleton<IServiceCollection>(copy);
 
-            services.AddSingleton<ITemplateManager>(new TemplateManager());
-
-            services.AddTransient<IModulesHtmlHelper, ModulesHtmlHelper>();
+            services.AddSingleton<IModuleManager>(new ModuleManager());
         }
 
         public static void UseModules(this IApplicationBuilder app)
@@ -124,6 +122,16 @@ namespace Microsoft.AspNetCore.Modules
             });
             moduleStartup.Configure(moduleBuilder);
             moduleBuilder.UseMiddleware<EndModuleMiddleware>();
+
+            var moduleManager = app.ApplicationServices.GetService<IModuleManager>();
+            moduleManager.AddModule(new ModuleDescriptor()
+            {
+                Name = moduleAssemblyName,
+                PathBase = pathBase,
+                HostingEnvironment = moduleEnv,
+                ModuleServices = moduleServiceProvider,
+
+            });
 
             return app.Use(next =>
             {

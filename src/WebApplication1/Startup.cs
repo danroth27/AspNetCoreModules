@@ -7,9 +7,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Module1;
 using Microsoft.AspNetCore.Modules;
 using System.Diagnostics;
+using Microsoft.AspNetCore.ViewTemplates;
+using Microsoft.AspNetCore.Modules.Mvc;
 
 namespace WebApplication1
 {
@@ -32,11 +33,14 @@ namespace WebApplication1
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddModules();
+            services.AddModulesMvc();
 
             // Add framework services.
             services.AddMvc();
 
             services.AddMiddlewareAnalysis();
+
+            services.AddViewTemplates();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
