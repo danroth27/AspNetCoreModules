@@ -4,7 +4,7 @@
   "dependencies": {
     "Microsoft.AspNetCore.Html.Abstractions": "1.1.0-preview1-final",
     "Microsoft.AspNetCore.Modules": "1.0.0-*",
-    "Microsoft.AspNetCore.Mvc.ViewFeatures": "1.1.0-preview1-final",
+    "Microsoft.AspNetCore.Mvc": "1.1.0-preview1-final",
     "NETStandard.Library": "1.6.1-*"
   },
 

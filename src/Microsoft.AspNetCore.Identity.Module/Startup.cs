@@ -5,18 +5,14 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.Module.Data;
+using Microsoft.AspNetCore.Identity.Module.Models;
+using Microsoft.AspNetCore.Identity.Module.Services;
+using Microsoft.AspNetCore.Modules.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Identity.Module.Data;
-using Microsoft.AspNetCore.Identity.Module.Models;
-using Microsoft.AspNetCore.Identity.Module.Services;
-using Microsoft.AspNetCore.Modules.Abstractions;
-using Microsoft.AspNetCore.Html;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using System.IO;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 namespace Microsoft.AspNetCore.Identity.Module
 {
@@ -40,6 +36,7 @@ namespace Microsoft.AspNetCore.Identity.Module
         }
 
         public IConfigurationRoot Configuration { get; }
+      
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
@@ -52,7 +49,7 @@ namespace Microsoft.AspNetCore.Identity.Module
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
-            var mvcBuilder = services.AddMvc();
+            services.AddMvc().AddModuleViewOverrides();
 
             // Add application services.
             services.AddTransient<IEmailSender, AuthMessageSender>();

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Hosting;
 
 namespace Microsoft.AspNetCore.Modules.Mvc
 {
@@ -23,6 +24,12 @@ namespace Microsoft.AspNetCore.Modules.Mvc
         public static Task<IHtmlContent> ModulePartialAsync(this IHtmlHelper htmlHelper, string partialViewName, string moduleName, object model, ViewDataDictionary viewData)
         {
             var viewContext = htmlHelper.ViewContext;
+            var env = viewContext.HttpContext.RequestServices.GetService<IHostingEnvironment>();
+            if (env.ApplicationName == moduleName)
+            {
+                return htmlHelper.PartialAsync(partialViewName, model, viewData);
+            }
+
             var moduleManager = viewContext.HttpContext.RequestServices.GetService<IModuleManager>();
             var module = moduleManager.GetModule(moduleName);
             var moduleHtmlHelper = module.ModuleServices.GetService<IHtmlHelper>();
