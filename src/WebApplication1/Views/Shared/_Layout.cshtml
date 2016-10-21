@@ -35,12 +35,12 @@
                     <li><a asp-area="" asp-controller="Home" asp-action="Contact">Contact</a></li>
                 </ul>)
                 @*@await Html.ModulePartialAsync("_LoginPartial", "Microsoft.AspNetCore.Identity.Module")*@
-                @Html.ModulePartial("_LoginPartial")
+                @*@Html.ModulePartial("_LoginPartial")*@
             </div>
         </div>
     </div>
     <div class="container body-content">
-        @await Templates.RenderTemplateAsync("Module1.Test")
+        @*@await Templates.RenderTemplateAsync("Module1.Test")*@
         @RenderBody()
         <hr />
         <footer>

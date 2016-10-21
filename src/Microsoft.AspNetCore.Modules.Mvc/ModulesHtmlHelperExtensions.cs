@@ -121,7 +121,7 @@ namespace Microsoft.AspNetCore.Modules.Mvc
             var moduleRouteBuilder = module.Properties[ModulesRouteBuilderExtensions.ModuleRouteBuilder] as RouteBuilder;
             moduleViewContext.RouteData.Routers.Add(moduleRouteBuilder.Build());
             moduleViewContext.HttpContext = new ModuleHttpContext(
-                viewContext.HttpContext.Features, module.ModuleServices, module.Options.RoutePrefix);
+                viewContext.HttpContext.Features, module.ModuleServices, module.PathBase);
 
             var moduleHtmlGenerator = module.ModuleServices.GetService<IHtmlGenerator>();
             var tagBuilder = moduleHtmlGenerator.GenerateActionLink(

@@ -1,21 +1,19 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Modules.Abstractions;
 
 namespace Microsoft.AspNetCore.Modules
 {
-    public static class RoutePrefixApplicationBuilderExtensions
+    public static class UseWhenPathExtensions
     {
-        public static IApplicationBuilder UseModuleRoutePrefix(this IApplicationBuilder app, Action<IApplicationBuilder> configuration)
+        public static IApplicationBuilder UseWhenPath(
+            this IApplicationBuilder app, 
+            PathString pathBase, 
+            Action<IApplicationBuilder> configuration)
         {
-            var routePrefix = app.ApplicationServices.GetService<IOptions<ModuleOptions>>().Value.RoutePrefix;
-
             PathString originalPath;
             PathString originalPathBase;
             return app.UseWhen(
@@ -23,17 +21,26 @@ namespace Microsoft.AspNetCore.Modules
                 {
                     originalPath = context.Request.Path;
                     originalPathBase = context.Request.PathBase;
-                    return context.Request.Path.StartsWithSegments(routePrefix);
+                    return context.Request.Path.StartsWithSegments(pathBase);
                 },
                 subApp =>
                 {
-                    subApp.UsePathBase(routePrefix);
+                    subApp.UsePathBase(pathBase);
                     configuration(subApp);
-                    subApp.Use((context, next) =>
+                    subApp.Use(async (context, next) =>
                     {
+                        var virtualPath = context.Request.Path;
                         context.Request.Path = originalPath;
                         context.Request.PathBase = originalPathBase;
-                        return next();
+                        try
+                        {
+                            await next();
+                        }
+                        finally
+                        {
+                            context.Request.Path = virtualPath;
+                            context.Request.PathBase = pathBase;
+                        }
                     });
                 });
         }

@@ -37,7 +37,7 @@ namespace Module1
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseMvcWithModuleRoutePrefix(routes =>
+            app.UseMvcWithModules(routes =>
             {
                 routes.MapRoute("default", "{controller=Home}/{action=Index}/{id?}");
             });

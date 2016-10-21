@@ -48,38 +48,87 @@ namespace Microsoft.AspNetCore.Modules
 
         public static IApplicationBuilder UseModule<TStartup>(this IApplicationBuilder app) where TStartup : class
         {
-            return app.UseModule<TStartup>(PathString.Empty);
+            return app.UseModuleCore<TStartup>(PathString.Empty);
         }
 
-        public static IApplicationBuilder UseModule<TStartup>(this IApplicationBuilder app, PathString routePrefix) where TStartup : class
+        public static IApplicationBuilder UseModuleAtPath<TStartup>(
+            this IApplicationBuilder app,
+            PathString pathBase) where TStartup : class
+        {
+            return app.UseWhenPath(pathBase, branch =>
+            {
+                branch.UseModuleCore<TStartup>(pathBase);
+            });
+        }
+
+        public static IApplicationBuilder UseModuleWhen<TStartup>(
+            this IApplicationBuilder app,
+            Func<HttpContext, bool> predicate) where TStartup : class
+        {
+            return app.UseWhen(predicate, branch =>
+            {
+                branch.UseModule<TStartup>();
+            });
+        }
+
+        public static IApplicationBuilder UseModuleCore<TStartup>(this IApplicationBuilder app, PathString pathBase) where TStartup : class
         {
             if (app == null)
             {
                 throw new ArgumentNullException(nameof(app));
             }
 
-            if (routePrefix.HasValue && routePrefix.Value.EndsWith("/", StringComparison.Ordinal))
-            {
-                throw new ArgumentException("The path must not end with a '/'", nameof(routePrefix));
-            }
+            var moduleEnv = GetModuleHostingEnvironment<TStartup>(app);
 
+            IStartup moduleStartup;
+            var moduleServices = GetModuleServices<TStartup>(app, moduleEnv, out moduleStartup);
+
+            AddModuleDescriptor(app, moduleEnv.ApplicationName, moduleEnv, moduleServices, pathBase);
+
+            var moduleBuilder = GetModuleBuilder(app, moduleServices, moduleStartup.Configure);
+
+            // Wire the module into the app pipeline
+            return app.Use(next =>
+            {
+                moduleBuilder.Run(next);
+                var module = moduleBuilder.Build();
+                return context => module(context);
+            });
+        }
+
+        public static IHostingEnvironment GetModuleHostingEnvironment<TStartup>(IApplicationBuilder app) where TStartup : class
+        {
             var moduleStartupType = typeof(TStartup);
             var moduleAssemblyName = moduleStartupType.GetTypeInfo().Assembly.GetName().Name;
             var env = app.ApplicationServices.GetService<IHostingEnvironment>();
-
-            // Create the module environment
-            var moduleOptions = new WebHostOptions() { Environment = env.EnvironmentName };
-            // TODO: Module configuration support
             var moduleEnv = new HostingEnvironment();
             moduleEnv.Initialize(
                 applicationName: moduleAssemblyName,
+                // TODO: Figure out content roots for modules - hack for now
                 contentRootPath: Path.Combine(new DirectoryInfo(env.ContentRootPath).Parent.FullName, moduleAssemblyName),
-                // TODO: Figure out content roots for modules
-                options: new WebHostOptions());
+                options: new WebHostOptions() { Environment = env.EnvironmentName });
+            return moduleEnv;
+        }
 
-            // Setup the module services
+        public static IServiceProvider GetModuleServices<TStartup>(IApplicationBuilder app, IHostingEnvironment moduleEnv, out IStartup moduleStartup) where TStartup : class
+        {
             var moduleServices = new ServiceCollection();
-            // - Copy over the hosting services from the app that were saved previously in AddModules()
+            moduleServices.Add(GetModuleHostingServices(app));
+            moduleServices.AddSingleton<IHostingEnvironment>(moduleEnv);
+            moduleServices.AddSingleton<ISharedServiceProvider>(new SharedServiceProvider(app.ApplicationServices));
+            moduleServices.AddSingleton<IStartup>(sp =>
+            {
+                var hostingEnvironment = sp.GetRequiredService<IHostingEnvironment>();
+                return new ConventionBasedStartup(StartupLoader.LoadMethods(sp, typeof(TStartup), hostingEnvironment.EnvironmentName));
+            });
+            var moduleHostingServiceProvider = moduleServices.BuildServiceProvider();
+            moduleStartup = moduleHostingServiceProvider.GetRequiredService<IStartup>();
+            return moduleStartup.ConfigureServices(moduleServices);
+        }
+
+        static IServiceCollection GetModuleHostingServices(IApplicationBuilder app)
+        {
+            var moduleServices = new ServiceCollection();
             var hostingServices = app.ApplicationServices.GetService<IServiceCollection>();
             var hostingServiceProvider = app.ApplicationServices;
             foreach (var sd in hostingServices)
@@ -97,47 +146,33 @@ namespace Microsoft.AspNetCore.Modules
                     moduleServices.Add(sd);
                 }
             }
-            // - Add the module hosting environment to replace the app hosting environment
-            moduleServices.AddSingleton<IHostingEnvironment>(moduleEnv);
-            // - Add a shared service provider to allow access to app services
-            moduleServices.AddSingleton<ISharedServiceProvider>(new SharedServiceProvider(app.ApplicationServices));
-            // - Add module specific services
-            moduleServices.AddOptions();
-            moduleServices.Configure<ModuleOptions>(options =>
-            {
-                options.RoutePrefix = routePrefix;
-            });
-            moduleServices.AddSingleton<IStartup>(sp =>
-            {
-                var hostingEnvironment = sp.GetRequiredService<IHostingEnvironment>();
-                return new ConventionBasedStartup(StartupLoader.LoadMethods(sp, moduleStartupType, hostingEnvironment.EnvironmentName));
-            });
-            var moduleHostingServiceProvider = moduleServices.BuildServiceProvider();
-            var moduleStartup = moduleHostingServiceProvider.GetRequiredService<IStartup>();
-            var moduleServiceProvider = moduleStartup.ConfigureServices(moduleServices);
+            return moduleServices;
+        }
 
-            // Keep track of all modules
+        static void AddModuleDescriptor(
+            IApplicationBuilder app, 
+            string name, 
+            IHostingEnvironment moduleEnv, 
+            IServiceProvider moduleServices,
+            PathString pathBase)
+        {
             var moduleManager = app.ApplicationServices.GetService<IModuleManager>();
             moduleManager.AddModule(new ModuleDescriptor()
             {
-                Name = moduleAssemblyName,
+                Name = moduleEnv.ApplicationName,
                 HostingEnvironment = moduleEnv,
-                ModuleServices = moduleServiceProvider,
-                Options = moduleServiceProvider.GetService<IOptions<ModuleOptions>>().Value
+                ModuleServices = moduleServices,
+                PathBase = pathBase
             });
+        }
 
-            // Setup the module pipeline
-            var moduleBuilder = new ApplicationBuilder(moduleServiceProvider, app.ServerFeatures);
-            moduleBuilder.UseMiddleware<BeginModuleMiddleware>();
-            moduleStartup.Configure(moduleBuilder);
-            moduleBuilder.UseMiddleware<EndModuleMiddleware>();
-
-            return app.Use(next =>
-            {
-                moduleBuilder.Run(next);
-                var module = moduleBuilder.Build();
-                return context => module(context);
-            });
+        static IApplicationBuilder GetModuleBuilder(
+            IApplicationBuilder app, 
+            IServiceProvider moduleServices, 
+            Action<IApplicationBuilder> configuration)
+        {
+            var moduleBuilder = new ApplicationBuilder(moduleServices, app.ServerFeatures);
+            return moduleBuilder.UseRequestServices(configuration);
         }
 
     }

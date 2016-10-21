@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Concurrent;
+using Microsoft.AspNetCore.Builder;
 
 namespace Microsoft.AspNetCore.Modules.Abstractions
 {
@@ -21,9 +22,8 @@ namespace Microsoft.AspNetCore.Modules.Abstractions
 
         public IServiceProvider ModuleServices { get; set; }
 
-        public ModuleOptions Options { get; set; }
+        public PathString PathBase { get; set; }
 
         public IDictionary<string, object> Properties { get; }
-
     }
 }

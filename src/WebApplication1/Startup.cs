@@ -67,7 +67,7 @@ namespace WebApplication1
                 app.UseExceptionHandler("/Home/Error");
             }
 
-            app.UseModule<Module1.Startup>("/modules");
+            app.UseModuleAtPath<Module1.Startup>("/modules");
             app.UseModule<Microsoft.AspNetCore.Identity.Module.Startup>();
 
             app.UseStaticFiles();

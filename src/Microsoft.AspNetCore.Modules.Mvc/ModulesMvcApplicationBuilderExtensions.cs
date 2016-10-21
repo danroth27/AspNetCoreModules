@@ -9,15 +9,12 @@ namespace Microsoft.AspNetCore.Modules.Mvc
 {
     public static class ModulesMvcApplicationBuilderExtensions
     {
-        public static IApplicationBuilder UseMvcWithModuleRoutePrefix(this IApplicationBuilder app, Action<IRouteBuilder> configureRoutes)
+        public static IApplicationBuilder UseMvcWithModules(this IApplicationBuilder app, Action<IRouteBuilder> configureRoutes)
         {
-            return app.UseModuleRoutePrefix(subApp =>
+            return app.UseMvc(routes =>
             {
-                subApp.UseMvc(routes =>
-                {
-                    configureRoutes(routes);
-                    routes.ShareRoutes();
-                });
+                configureRoutes(routes);
+                routes.ShareModuleRoutes();
             });
         }
     }

@@ -12,7 +12,7 @@ namespace Microsoft.AspNetCore.Modules.Mvc
     public static class ModulesRouteBuilderExtensions
     {
         public const string ModuleRouteBuilder = "ModuleRouteBuilder";
-        public static void ShareRoutes(this IRouteBuilder routes)
+        public static void ShareModuleRoutes(this IRouteBuilder routes)
         {
             var sharedServices = routes.ApplicationBuilder.ApplicationServices.GetService<ISharedServiceProvider>();
             var moduleManager = sharedServices.GetService<IModuleManager>();
