@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Modules.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -115,12 +116,6 @@ namespace Microsoft.AspNetCore.Modules
             var moduleStartup = moduleHostingServiceProvider.GetRequiredService<IStartup>();
             var moduleServiceProvider = moduleStartup.ConfigureServices(moduleServices);
 
-            // Setup the module pipeline
-            var moduleBuilder = new ApplicationBuilder(moduleServiceProvider, app.ServerFeatures);
-            moduleBuilder.UseMiddleware<BeginModuleMiddleware>();
-            moduleStartup.Configure(moduleBuilder);
-            moduleBuilder.UseMiddleware<EndModuleMiddleware>();
-
             // Keep track of all modules
             var moduleManager = app.ApplicationServices.GetService<IModuleManager>();
             moduleManager.AddModule(new ModuleDescriptor()
@@ -128,8 +123,14 @@ namespace Microsoft.AspNetCore.Modules
                 Name = moduleAssemblyName,
                 HostingEnvironment = moduleEnv,
                 ModuleServices = moduleServiceProvider,
-
+                Options = moduleServiceProvider.GetService<IOptions<ModuleOptions>>().Value
             });
+
+            // Setup the module pipeline
+            var moduleBuilder = new ApplicationBuilder(moduleServiceProvider, app.ServerFeatures);
+            moduleBuilder.UseMiddleware<BeginModuleMiddleware>();
+            moduleStartup.Configure(moduleBuilder);
+            moduleBuilder.UseMiddleware<EndModuleMiddleware>();
 
             return app.Use(next =>
             {

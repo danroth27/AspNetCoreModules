@@ -7,6 +7,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Html;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace Microsoft.AspNetCore.Modules.Mvc
 {
@@ -24,7 +27,7 @@ namespace Microsoft.AspNetCore.Modules.Mvc
             var module = moduleManager.GetModule(moduleName);
             var moduleHtmlHelper = module.ModuleServices.GetService<IHtmlHelper>();
             var moduleViewContext = new ViewContext(viewContext, viewContext.View, viewContext.ViewData, viewContext.Writer);
-            moduleViewContext.HttpContext = new ModuleHttpContext(viewContext.HttpContext, module.ModuleServices);
+            moduleViewContext.HttpContext = new ModuleHttpContext(viewContext.HttpContext.Features, module.ModuleServices);
             (moduleHtmlHelper as IViewContextAware)?.Contextualize(moduleViewContext);
             return moduleHtmlHelper.PartialAsync(partialViewName, model, viewData);
         }
@@ -70,6 +73,73 @@ namespace Microsoft.AspNetCore.Modules.Mvc
         {
             var result = ModulePartialAsync(htmlHelper, partialViewName);
             return result.GetAwaiter().GetResult();
+        }
+
+        public static IHtmlContent ModuleActionLink(
+            this IHtmlHelper htmlHelper,
+            string linkText,
+            string actionName,
+            string controllerName,
+            string moduleName)
+        {
+            return ModuleActionLink(
+                htmlHelper, 
+                linkText, 
+                actionName, 
+                controllerName, 
+                moduleName, 
+                protocol: null,
+                hostname: null,
+                fragment: null,
+                routeValues: null,
+                htmlAttributes: null);
+        }
+
+        public static IHtmlContent ModuleActionLink(
+            this IHtmlHelper htmlHelper,
+            string linkText,
+            string actionName,
+            string controllerName,
+            string moduleName,
+            string protocol,
+            string hostname,
+            string fragment,
+            object routeValues,
+            object htmlAttributes)
+        {
+            if (linkText == null)
+            {
+                throw new ArgumentNullException(nameof(linkText));
+            }
+
+            var viewContext = htmlHelper.ViewContext;
+            var moduleManager = viewContext.HttpContext.RequestServices.GetService<IModuleManager>();
+            var module = moduleManager.GetModule(moduleName);
+
+            var moduleViewContext = new ViewContext(viewContext, viewContext.View, viewContext.ViewData, viewContext.Writer);
+            moduleViewContext.RouteData = new RouteData(moduleViewContext.RouteData);
+            var moduleRouteBuilder = module.Properties[ModulesRouteBuilderExtensions.ModuleRouteBuilder] as RouteBuilder;
+            moduleViewContext.RouteData.Routers.Add(moduleRouteBuilder.Build());
+            moduleViewContext.HttpContext = new ModuleHttpContext(
+                viewContext.HttpContext.Features, module.ModuleServices, module.Options.RoutePrefix);
+
+            var moduleHtmlGenerator = module.ModuleServices.GetService<IHtmlGenerator>();
+            var tagBuilder = moduleHtmlGenerator.GenerateActionLink(
+                moduleViewContext,
+                linkText,
+                actionName,
+                controllerName,
+                protocol,
+                hostname,
+                fragment,
+                routeValues,
+                htmlAttributes);
+            if (tagBuilder == null)
+            {
+                return HtmlString.Empty;
+            }
+
+            return tagBuilder;
         }
     }
 

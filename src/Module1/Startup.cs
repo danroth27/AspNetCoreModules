@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Modules;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Modules.Mvc;
 
 namespace Module1
 {
@@ -23,6 +24,7 @@ namespace Module1
         {
             // Add framework services.
             services.AddMvc();
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -35,9 +37,9 @@ namespace Module1
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseModuleRoutePrefix(subApp =>
+            app.UseMvcWithModuleRoutePrefix(routes =>
             {
-                subApp.UseMvcWithDefaultRoute();
+                routes.MapRoute("default", "{controller=Home}/{action=Index}/{id?}");
             });
         }
     }

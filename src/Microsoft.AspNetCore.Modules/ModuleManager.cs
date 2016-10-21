@@ -18,7 +18,9 @@ namespace Microsoft.AspNetCore.Modules
 
         public ModuleDescriptor GetModule(string name)
         {
-            return _modules[name];
+            ModuleDescriptor module;
+            _modules.TryGetValue(name, out module);
+            return module;
         }
 
         public IEnumerable<ModuleDescriptor> GetModules()
