@@ -25,6 +25,7 @@ namespace Microsoft.AspNetCore.Modules.Mvc
 
         public void Configure(RazorViewEngineOptions options)
         {
+            // TODO: Enable support for using the app layout. Requires building overrides in the context of the app.
             //options.FileProviders.Insert(0, GetAppLayoutFileProvider(_env));
             options.FileProviders.Insert(0, GetModuleViewOverridesFileProvider(_env, _moduleEnv));
 

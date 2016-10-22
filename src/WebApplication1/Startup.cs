@@ -32,7 +32,10 @@ namespace WebApplication1
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddModules();
+            services.AddModules(
+                Configuration.GetSection("Modules"), 
+                typeof(Module1.Startup), 
+                typeof(Microsoft.AspNetCore.Identity.Module.Startup));
 
             services.AddMvc().ConfigureApplicationPartManager(partManager =>
             {
@@ -67,8 +70,7 @@ namespace WebApplication1
                 app.UseExceptionHandler("/Home/Error");
             }
 
-            app.UseModuleAtPath<Module1.Startup>("/modules");
-            app.UseModule<Microsoft.AspNetCore.Identity.Module.Startup>();
+            app.UseModules();
 
             app.UseStaticFiles();
 

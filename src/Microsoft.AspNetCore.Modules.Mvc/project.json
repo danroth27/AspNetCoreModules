@@ -2,9 +2,9 @@
   "version": "1.0.0-*",
 
   "dependencies": {
-    "Microsoft.AspNetCore.Html.Abstractions": "1.1.0-preview1-final",
+    "Microsoft.AspNetCore.Html.Abstractions": "1.1.0-*",
     "Microsoft.AspNetCore.Modules": "1.0.0-*",
-    "Microsoft.AspNetCore.Mvc": "1.1.0-preview1-final",
+    "Microsoft.AspNetCore.Mvc": "1.1.0-*",
     "NETStandard.Library": "1.6.1-*"
   },
 

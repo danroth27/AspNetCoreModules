@@ -49,6 +49,7 @@ namespace Microsoft.AspNetCore.Identity.Module
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
+            // TODO: How to make module view overrides build in the context of the app?
             services.AddMvc().AddModuleViewOverrides();
 
             // Add application services.

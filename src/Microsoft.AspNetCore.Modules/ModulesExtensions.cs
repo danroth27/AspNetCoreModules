@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Internal;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Modules.Abstractions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -18,89 +19,73 @@ namespace Microsoft.AspNetCore.Modules
 {
     public static class ModulesExtensions
     {
-        public static void AddModules(this IServiceCollection services)
+        public static void AddModules(this IServiceCollection services, IConfiguration config, params Type[] moduleStartupTypes)
         {
             // Find all the modules
             // - Determine order, path base, content root, assembly name (app name)
             // Call into modules to add application services
 
             // Hack to make hosting services available to modules
-            var copy = new ServiceCollection();
-            foreach (var sd in services)
-            {
-                copy.Add(sd);
-            }
-            services.AddSingleton<IServiceCollection>(copy);
+            IHostingEnvironment env;
+            var hostingServices = GetModuleHostingServices(services, out env);
 
-            services.AddSingleton<IModuleManager>(new ModuleManager());
+            var moduleManager = new ModuleManager();
+            foreach (var moduleStartupType in moduleStartupTypes)
+            {
+                var moduleEnv = GetModuleHostingEnvironment(moduleStartupType, env);
+                var moduleServices = new ServiceCollection();
+                moduleServices.Add(hostingServices);
+                moduleServices.AddSingleton(moduleEnv);
+                moduleServices.AddSingleton<IModuleStartup>(sp =>
+                {
+                    var hostingEnvironment = sp.GetRequiredService<IHostingEnvironment>();
+                    return new ConventionBasedModuleStartup(
+                        ModuleStartupLoader.LoadMethods(sp, moduleStartupType, hostingEnvironment.EnvironmentName));
+                });
+                var moduleHostingServiceProvider = moduleServices.BuildServiceProvider();
+                var moduleStartup = moduleHostingServiceProvider.GetRequiredService<IModuleStartup>();
+                moduleStartup.ConfigureSharedServices(services);
+                var pathBase = config[$"{moduleEnv.ApplicationName}:PathBase"];
+                var moduleDescriptor = new ModuleDescriptor()
+                {
+                    Name = moduleEnv.ApplicationName,
+                    HostingEnvironment = moduleEnv,
+                    PathBase = new PathString(pathBase)
+                };
+                moduleDescriptor.Properties[typeof(IServiceCollection)] = moduleServices;
+                moduleDescriptor.Properties[typeof(IModuleStartup)] = moduleStartup;
+                moduleManager.AddModule(moduleDescriptor);
+            }
+
+            services.AddSingleton<IModuleManager>(moduleManager);
         }
 
         public static void UseModules(this IApplicationBuilder app)
         {
-            // For each module (order?):
-            // - Determine the path base (how to specify?)
-            // - Fork a pipeline for the module's path base
-            // - Determine the module's content root
-            // - Determine the module's app name (assembly name)
-            // - 
+            // TODO: how to add the shared service provider?
+            // moduleServices.AddSingleton<ISharedServiceProvider>(new SharedServiceProvider(app.ApplicationServices));
 
-        }
-
-        public static IApplicationBuilder UseModule<TStartup>(this IApplicationBuilder app) where TStartup : class
-        {
-            return app.UseModuleCore<TStartup>(PathString.Empty);
-        }
-
-        public static IApplicationBuilder UseModuleAtPath<TStartup>(
-            this IApplicationBuilder app,
-            PathString pathBase) where TStartup : class
-        {
-            return app.UseWhenPath(pathBase, branch =>
+            var moduleManager = app.ApplicationServices.GetService<IModuleManager>();
+            var moduleDescriptors = moduleManager.GetModules();
+            foreach (var moduleDescriptor in moduleDescriptors)
             {
-                branch.UseModuleCore<TStartup>(pathBase);
-            });
-        }
-
-        public static IApplicationBuilder UseModuleWhen<TStartup>(
-            this IApplicationBuilder app,
-            Func<HttpContext, bool> predicate) where TStartup : class
-        {
-            return app.UseWhen(predicate, branch =>
-            {
-                branch.UseModule<TStartup>();
-            });
-        }
-
-        public static IApplicationBuilder UseModuleCore<TStartup>(this IApplicationBuilder app, PathString pathBase) where TStartup : class
-        {
-            if (app == null)
-            {
-                throw new ArgumentNullException(nameof(app));
+                moduleDescriptor.ModuleServices = GetModuleServices(app, moduleDescriptor);
+                var moduleBuilder = GetModuleBuilder(app, moduleDescriptor);
+                app.UseWhenPath(moduleDescriptor.PathBase, branch =>
+                {
+                    branch.Use(next =>
+                    {
+                        moduleBuilder.Run(next);
+                        var module = moduleBuilder.Build();
+                        return context => module(context);
+                    });
+                });
             }
-
-            var moduleEnv = GetModuleHostingEnvironment<TStartup>(app);
-
-            IStartup moduleStartup;
-            var moduleServices = GetModuleServices<TStartup>(app, moduleEnv, out moduleStartup);
-
-            AddModuleDescriptor(app, moduleEnv.ApplicationName, moduleEnv, moduleServices, pathBase);
-
-            var moduleBuilder = GetModuleBuilder(app, moduleServices, moduleStartup.Configure);
-
-            // Wire the module into the app pipeline
-            return app.Use(next =>
-            {
-                moduleBuilder.Run(next);
-                var module = moduleBuilder.Build();
-                return context => module(context);
-            });
         }
 
-        public static IHostingEnvironment GetModuleHostingEnvironment<TStartup>(IApplicationBuilder app) where TStartup : class
+        public static IHostingEnvironment GetModuleHostingEnvironment(Type moduleStartupType, IHostingEnvironment env)
         {
-            var moduleStartupType = typeof(TStartup);
             var moduleAssemblyName = moduleStartupType.GetTypeInfo().Assembly.GetName().Name;
-            var env = app.ApplicationServices.GetService<IHostingEnvironment>();
             var moduleEnv = new HostingEnvironment();
             moduleEnv.Initialize(
                 applicationName: moduleAssemblyName,
@@ -110,30 +95,18 @@ namespace Microsoft.AspNetCore.Modules
             return moduleEnv;
         }
 
-        public static IServiceProvider GetModuleServices<TStartup>(IApplicationBuilder app, IHostingEnvironment moduleEnv, out IStartup moduleStartup) where TStartup : class
+        static IServiceCollection GetModuleHostingServices(IServiceCollection hostingServices, out IHostingEnvironment env)
         {
             var moduleServices = new ServiceCollection();
-            moduleServices.Add(GetModuleHostingServices(app));
-            moduleServices.AddSingleton<IHostingEnvironment>(moduleEnv);
-            moduleServices.AddSingleton<ISharedServiceProvider>(new SharedServiceProvider(app.ApplicationServices));
-            moduleServices.AddSingleton<IStartup>(sp =>
-            {
-                var hostingEnvironment = sp.GetRequiredService<IHostingEnvironment>();
-                return new ConventionBasedStartup(StartupLoader.LoadMethods(sp, typeof(TStartup), hostingEnvironment.EnvironmentName));
-            });
-            var moduleHostingServiceProvider = moduleServices.BuildServiceProvider();
-            moduleStartup = moduleHostingServiceProvider.GetRequiredService<IStartup>();
-            return moduleStartup.ConfigureServices(moduleServices);
-        }
-
-        static IServiceCollection GetModuleHostingServices(IApplicationBuilder app)
-        {
-            var moduleServices = new ServiceCollection();
-            var hostingServices = app.ApplicationServices.GetService<IServiceCollection>();
-            var hostingServiceProvider = app.ApplicationServices;
+            var hostingServiceProvider = hostingServices.BuildServiceProvider();
+            env = null;
             foreach (var sd in hostingServices)
             {
-                if (sd.ServiceType == typeof(IHostingEnvironment)) continue;
+                if (sd.ServiceType == typeof(IHostingEnvironment))
+                {
+                    env = sd.ImplementationInstance as IHostingEnvironment;
+                    continue;
+                }
                 if (!sd.ServiceType.GetTypeInfo().IsGenericTypeDefinition)
                 {
                     moduleServices.Add(ServiceDescriptor.Describe(
@@ -149,30 +122,21 @@ namespace Microsoft.AspNetCore.Modules
             return moduleServices;
         }
 
-        static void AddModuleDescriptor(
-            IApplicationBuilder app, 
-            string name, 
-            IHostingEnvironment moduleEnv, 
-            IServiceProvider moduleServices,
-            PathString pathBase)
+        public static IServiceProvider GetModuleServices(IApplicationBuilder app, ModuleDescriptor moduleDescriptor)
         {
-            var moduleManager = app.ApplicationServices.GetService<IModuleManager>();
-            moduleManager.AddModule(new ModuleDescriptor()
-            {
-                Name = moduleEnv.ApplicationName,
-                HostingEnvironment = moduleEnv,
-                ModuleServices = moduleServices,
-                PathBase = pathBase
-            });
+            var moduleServices = moduleDescriptor.Properties[typeof(IServiceCollection)] as IServiceCollection;
+            var moduleStartup = moduleDescriptor.Properties[typeof(IModuleStartup)] as IModuleStartup;
+            moduleServices.AddSingleton<ISharedServiceProvider>(new SharedServiceProvider(app.ApplicationServices));
+            return moduleStartup.ConfigureServices(moduleServices);
         }
 
         static IApplicationBuilder GetModuleBuilder(
             IApplicationBuilder app, 
-            IServiceProvider moduleServices, 
-            Action<IApplicationBuilder> configuration)
+            ModuleDescriptor moduleDescriptor)
         {
-            var moduleBuilder = new ApplicationBuilder(moduleServices, app.ServerFeatures);
-            return moduleBuilder.UseRequestServices(configuration);
+            var moduleStartup = moduleDescriptor.Properties[typeof(IModuleStartup)] as IModuleStartup;
+            var moduleBuilder = new ApplicationBuilder(moduleDescriptor.ModuleServices, app.ServerFeatures);
+            return moduleBuilder.UseRequestServices(moduleStartup.Configure);
         }
 
     }

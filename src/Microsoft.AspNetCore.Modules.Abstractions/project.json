@@ -5,8 +5,8 @@
     "NETStandard.Library": "1.6.1-*",
     "System.ComponentModel": "4.3.0-*",
     "Microsoft.AspNetCore.Html.Abstractions": "1.1.0-*",
-    "Microsoft.AspNetCore.Http.Abstractions": "1.1.0-preview1-final",
-    "Microsoft.AspNetCore.Hosting.Abstractions": "1.1.0-preview1-final"
+    "Microsoft.AspNetCore.Http.Abstractions": "1.1.0-*",
+    "Microsoft.AspNetCore.Hosting.Abstractions": "1.1.0-*"
   },
 
   "frameworks": {

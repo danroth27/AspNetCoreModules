@@ -13,7 +13,7 @@ namespace Microsoft.AspNetCore.Modules.Abstractions
     {
         public ModuleDescriptor()
         {
-            Properties = new ConcurrentDictionary<string, object>();
+            Properties = new ConcurrentDictionary<object, object>();
         }
 
         public string Name { get; set; }
@@ -24,6 +24,6 @@ namespace Microsoft.AspNetCore.Modules.Abstractions
 
         public PathString PathBase { get; set; }
 
-        public IDictionary<string, object> Properties { get; }
+        public IDictionary<object, object> Properties { get; }
     }
 }
