@@ -8,7 +8,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{28D3EA60-DAF4-4704-BE8C-4903B153A45B}"
 	ProjectSection(SolutionItems) = preProject
 		global.json = global.json
-		NuGet.config = NuGet.config
 	EndProjectSection
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Microsoft.AspNetCore.Modules", "src\Microsoft.AspNetCore.Modules\Microsoft.AspNetCore.Modules.xproj", "{F2613F2A-C9EF-4972-8C97-EC65D8943ED0}"
