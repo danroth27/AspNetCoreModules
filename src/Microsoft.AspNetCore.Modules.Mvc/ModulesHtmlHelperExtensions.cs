@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Modules.Abstractions;
-using Microsoft.AspNetCore.Mvc.Rendering;
+﻿using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using System;
 using System.Collections.Generic;
@@ -11,6 +10,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Modules;
 
 namespace Microsoft.AspNetCore.Modules.Mvc
 {
@@ -30,7 +30,7 @@ namespace Microsoft.AspNetCore.Modules.Mvc
                 return htmlHelper.PartialAsync(partialViewName, model, viewData);
             }
 
-            var moduleManager = viewContext.HttpContext.RequestServices.GetService<IModuleManager>();
+            var moduleManager = viewContext.HttpContext.RequestServices.GetRequiredService<IModuleManager>();
             var module = moduleManager.GetModule(moduleName);
             var moduleHtmlHelper = module.ModuleServices.GetService<IHtmlHelper>();
             var moduleViewContext = new ViewContext(viewContext, viewContext.View, viewContext.ViewData, viewContext.Writer);
@@ -125,7 +125,8 @@ namespace Microsoft.AspNetCore.Modules.Mvc
 
             var moduleViewContext = new ViewContext(viewContext, viewContext.View, viewContext.ViewData, viewContext.Writer);
             moduleViewContext.RouteData = new RouteData(moduleViewContext.RouteData);
-            var moduleRouteBuilder = module.Properties[ModulesRouteBuilderExtensions.ModuleRouteBuilder] as RouteBuilder;
+            var sharedRoutesManager = module.ModuleServices.GetService<ISharedRoutesManager>();
+            var moduleRouteBuilder = sharedRoutesManager.GetRoutes(moduleName);
             moduleViewContext.RouteData.Routers.Add(moduleRouteBuilder.Build());
             moduleViewContext.HttpContext = new ModuleHttpContext(
                 viewContext.HttpContext.Features, module.ModuleServices, module.PathBase);

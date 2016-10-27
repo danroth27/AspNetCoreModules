@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Modules.Abstractions;
+﻿using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -11,10 +11,27 @@ namespace Microsoft.AspNetCore.Modules
     {
         IDictionary<string, ModuleDescriptor> _modules = new ConcurrentDictionary<string, ModuleDescriptor>();
 
-        public void AddModule(ModuleDescriptor module)
+        public ModuleManager(IEnumerable<IModuleLoader> moduleLoaders, IServiceCollection hostingServices)
         {
-            _modules[module.Name] = module;
+            var sharedModuleServices = new ServiceCollection();
+            var moduleDescriptors = moduleLoaders.SelectMany(moduleLoader => moduleLoader.GetModuleDescriptors())
+                .Select(moduleDescriptor =>
+                {
+                    var moduleStartup = moduleDescriptor.ModuleServices.GetRequiredService<IModuleStartup>();
+                    moduleStartup.ConfigureSharedServices(sharedModuleServices);
+                    return moduleDescriptor;
+                })
+                .Select(moduleDescriptor => moduleDescriptor.AddSharedServices(sharedModuleServices));
+
+            foreach (var moduleDescriptor in moduleDescriptors)
+            {
+                _modules[moduleDescriptor.Name] = moduleDescriptor;
+            }
+
+            SharedServices = sharedModuleServices.BuildServiceProvider();
         }
+
+        public IServiceProvider SharedServices { get; set; }
 
         public ModuleDescriptor GetModule(string name)
         {

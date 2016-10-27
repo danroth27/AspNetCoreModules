@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - WebApplication1</title>
+    <title>@ViewData["Title"] - Microsoft.AspNetCore.Identity.Module</title>
 
     <environment names="Development">
         <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.css" />
@@ -26,25 +26,23 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a asp-area="" asp-controller="Home" asp-action="Index" class="navbar-brand">WebApplication1 (layout override)</a>
+                <a asp-area="" asp-controller="Home" asp-action="Index" class="navbar-brand">Microsoft.AspNetCore.Identity.Module</a>
             </div>
             <div class="navbar-collapse collapse">
                 <ul class="nav navbar-nav">
                     <li><a asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
                     <li><a asp-area="" asp-controller="Home" asp-action="About">About</a></li>
                     <li><a asp-area="" asp-controller="Home" asp-action="Contact">Contact</a></li>
-                </ul>)
-                @await Html.ModulePartialAsync("_LoginPartial", "Microsoft.AspNetCore.Identity.Module")
-                @*@Html.ModulePartial("_LoginPartial")*@
+                </ul>
+                @await Html.PartialAsync("_LoginPartial")
             </div>
         </div>
     </div>
     <div class="container body-content">
-        @*@await Templates.RenderTemplateAsync("Module1.Test")*@
         @RenderBody()
         <hr />
         <footer>
-            <p>&copy; 2016 - WebApplication1</p>
+            <p>&copy; 2016 - Microsoft.AspNetCore.Identity.Module</p>
         </footer>
     </div>
 

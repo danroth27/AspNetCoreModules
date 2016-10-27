@@ -31,10 +31,12 @@ namespace WebApplication1
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddModules(
-                Configuration.GetSection("Modules"), 
-                typeof(Module1.Startup), 
-                typeof(Microsoft.AspNetCore.Identity.Module.Startup));
+            services.AddViewTemplates();
+
+            services.AddModules(options => 
+            {
+                options.PathBase["Module1"] = "/Module1";
+            });
 
             services.AddMvc().ConfigureApplicationPartManager(partManager =>
             {
@@ -47,8 +49,6 @@ namespace WebApplication1
             });
 
             services.AddMiddlewareAnalysis();
-
-            services.AddViewTemplates();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

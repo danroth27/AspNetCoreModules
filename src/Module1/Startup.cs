@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Modules.Abstractions;
 using Microsoft.AspNetCore.ViewTemplates;
 using Microsoft.AspNetCore.Html;
 using Microsoft.Extensions.Options;
@@ -19,30 +18,29 @@ namespace Module1
 {
     public class Startup
     {
-        public void ConfigureSharedServices(IServiceCollection servcies)
+        public void ConfigureSharedServices(IServiceCollection services)
         {
-
         }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddViewTemplates();
             // Add framework services.
-            services.AddMvc();
+            var builder = services.AddMvcWithSharedRoutes();
 
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IOptions<ModuleOptions> moduleOptions)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
             app.ShareTemplate("Module1.Test", model => Task.FromResult<IHtmlContent>(new HtmlString("<b>View template from Module1</b>")));
-
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseMvcWithModules(routes =>
+            app.UseMvcWithSharedRoutes(routes =>
             {
                 routes.MapRoute("default", "{controller=Home}/{action=Index}/{id?}");
             });

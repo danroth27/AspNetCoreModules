@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 
-namespace Microsoft.AspNetCore.Modules.Abstractions
+namespace Microsoft.AspNetCore.Modules
 {
     public class ModuleOptions
     {

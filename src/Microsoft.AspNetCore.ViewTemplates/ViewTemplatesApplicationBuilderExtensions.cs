@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Html;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Modules.Abstractions;
 
 namespace Microsoft.AspNetCore.ViewTemplates
 {
@@ -13,8 +12,7 @@ namespace Microsoft.AspNetCore.ViewTemplates
     {
         public static void ShareTemplate(this IApplicationBuilder app, string templateName, Func<object, Task<IHtmlContent>> template)
         {
-            var sharedServices = app.ApplicationServices.GetService<ISharedServiceProvider>();
-            var templateManager = sharedServices?.GetService<IViewTemplateManager>();
+            var templateManager = app.ApplicationServices.GetService<IViewTemplateManager>();
             templateManager?.AddTemplate(templateName, template);
         }
     }

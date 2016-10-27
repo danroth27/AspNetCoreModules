@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.AspNetCore.ViewTemplates
 {
@@ -10,7 +11,7 @@ namespace Microsoft.AspNetCore.ViewTemplates
     {
         public static void AddViewTemplates(this IServiceCollection services)
         {
-            services.AddSingleton<IViewTemplateManager>(new ViewTemplateManager());
+            services.TryAdd(ServiceDescriptor.Singleton<IViewTemplateManager>(new ViewTemplateManager()));
         }
     }
 }

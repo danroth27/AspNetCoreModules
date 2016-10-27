@@ -137,5 +137,49 @@ namespace Microsoft.AspNetCore.Modules
             }
             return methodInfo;
         }
+
+        public static Type FindStartupType(string startupAssemblyName, string environmentName)
+        {
+            if (string.IsNullOrEmpty(startupAssemblyName))
+            {
+                throw new ArgumentException(
+                    string.Format("A startup method, startup type or startup assembly is required. If specifying an assembly, '{0}' cannot be null or empty.",
+                    nameof(startupAssemblyName)),
+                    nameof(startupAssemblyName));
+            }
+
+            var assembly = Assembly.Load(new AssemblyName(startupAssemblyName));
+            if (assembly == null)
+            {
+                throw new InvalidOperationException(String.Format("The assembly '{0}' failed to load.", startupAssemblyName));
+            }
+
+            var startupNameWithEnv = "Startup" + environmentName;
+            var startupNameWithoutEnv = "Startup";
+
+            // Check the most likely places first
+            var type =
+                assembly.GetType(startupNameWithEnv) ??
+                assembly.GetType(startupAssemblyName + "." + startupNameWithEnv) ??
+                assembly.GetType(startupNameWithoutEnv) ??
+                assembly.GetType(startupAssemblyName + "." + startupNameWithoutEnv);
+
+            if (type == null)
+            {
+                // Full scan
+                var definedTypes = assembly.DefinedTypes.ToList();
+
+                var startupType1 = definedTypes.Where(info => info.Name.Equals(startupNameWithEnv, StringComparison.Ordinal));
+                var startupType2 = definedTypes.Where(info => info.Name.Equals(startupNameWithoutEnv, StringComparison.Ordinal));
+
+                var typeInfo = startupType1.Concat(startupType2).FirstOrDefault();
+                if (typeInfo != null)
+                {
+                    type = typeInfo.AsType();
+                }
+            }
+
+            return type;
+        }
     }
 }
