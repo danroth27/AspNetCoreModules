@@ -33,7 +33,7 @@ namespace WebApplication1
         {
             services.AddViewTemplates();
 
-            services.AddModules(options => 
+            services.AddModules(options =>
             {
                 options.PathBase["Module1"] = "/Module1";
             });

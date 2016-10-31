@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.DependencyModel;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.PlatformAbstractions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -61,7 +62,7 @@ namespace Microsoft.AspNetCore.Modules
             var moduleEnv = new HostingEnvironment();
             moduleEnv.Initialize(
                 applicationName: moduleAssemblyName,
-                contentRootPath: Path.Combine(_env.ContentRootPath, "Modules", moduleAssemblyName),
+                contentRootPath: Path.Combine(PlatformServices.Default.Application.ApplicationBasePath, "Modules", moduleAssemblyName),
                 options: new WebHostOptions() { Environment = _env.EnvironmentName });
             return moduleEnv;
         }
