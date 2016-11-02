@@ -13,37 +13,28 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNetCore.Identity.Module
 {
     public class Startup
     {
-        public Startup(IHostingEnvironment env)
+        IdentityModuleOptions _options;
+
+        public Startup(IOptions<IdentityModuleOptions> options)
         {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(env.ContentRootPath)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true);
-
-            if (env.IsDevelopment())
-            {
-                // For more details on using the user secret store see http://go.microsoft.com/fwlink/?LinkID=532709
-                builder.AddUserSecrets();
-            }
-
-            builder.AddEnvironmentVariables();
-            Configuration = builder.Build();
+            _options = options.Value;
         }
 
-        public IConfigurationRoot Configuration { get; }
-      
+        public IdentityModuleOptions Options { get; set; }
+
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             // Add framework services.
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(_options.ConnectionString));
 
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -61,6 +52,11 @@ namespace Microsoft.AspNetCore.Identity.Module
         {          
             var logger = loggerFactory.CreateLogger<Startup>();
             logger.LogInformation("Application name: {applicationName}", env.ApplicationName);
+
+            if (env.IsDevelopment())
+            {
+                app.UseDatabaseErrorPage();
+            }
 
             app.UseStaticFiles();
 

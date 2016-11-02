@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Modules;
 using System.Diagnostics;
 using Microsoft.AspNetCore.ViewTemplates;
 using Microsoft.AspNetCore.Modules.Mvc;
+using Microsoft.AspNetCore.Identity.Module;
 
 namespace WebApplication1
 {
@@ -32,6 +33,11 @@ namespace WebApplication1
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddViewTemplates();
+
+            services.Configure<IdentityModuleOptions>(options =>
+            {
+                options.ConnectionString = Configuration.GetConnectionString("DefaultConnection");
+            });
 
             services.AddModules(options =>
             {
