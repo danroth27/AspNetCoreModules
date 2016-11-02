@@ -66,7 +66,7 @@ namespace Microsoft.AspNetCore.Identity.Module
             {
                 routes.MapRoute(
                     name: "default",
-                    template: "{controller}/{action}/{id?}");
+                    template: "{controller}/{action=Index}/{id?}");
             });
         }
     }

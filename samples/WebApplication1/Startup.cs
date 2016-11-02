@@ -44,15 +44,7 @@ namespace WebApplication1
                 options.PathBase["Module1"] = "/Module1";
             });
 
-            services.AddMvc().ConfigureApplicationPartManager(partManager =>
-            {
-                var modules = new string[] { "Module1", "Microsoft.AspNetCore.Identity.Module" };
-                foreach (var module in modules)
-                {
-                    var modulePart = partManager.ApplicationParts.FirstOrDefault(part => part.Name == module);
-                    if (modulePart != null) partManager.ApplicationParts.Remove(modulePart);
-                }
-            });
+            services.AddMvc().IgnoreModules();
 
             services.AddMiddlewareAnalysis();
         }
