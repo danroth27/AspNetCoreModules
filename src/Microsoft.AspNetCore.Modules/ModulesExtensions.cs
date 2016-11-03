@@ -20,12 +20,18 @@ namespace Microsoft.AspNetCore.Modules
     public static class ModulesExtensions
     {
 
-        public static void AddModules(this IServiceCollection services, Action<ModulesOptions> configureOptions)
+        public static void AddModules(this IServiceCollection services)
         {
             // Hack to get the hosting services
             services.AddSingleton(GetHostingServices(services));
+
             services.AddTransient<IModuleLoader, ModuleLoader>();
             services.AddSingleton<IModuleManager, ModuleManager>();
+        }
+
+        public static void AddModules(this IServiceCollection services, Action<ModulesOptions> configureOptions)
+        {
+            services.AddModules();
             services.Configure(configureOptions);
 
         }
@@ -39,31 +45,24 @@ namespace Microsoft.AspNetCore.Modules
 
         public static void UseModules(this IApplicationBuilder app)
         {
-            var moduleManager = app.ApplicationServices.GetService<IModuleManager>();
-            var moduleDescriptors = moduleManager.GetModules();
-            foreach (var moduleDescriptor in moduleDescriptors)
-            {
-                var moduleBuilder = GetModuleBuilder(app, moduleDescriptor);
-                app.UseWhenPath(moduleDescriptor.PathBase, branch =>
-                {
-                    branch.Use(next =>
-                    {
-                        moduleBuilder.Run(next);
-                        var module = moduleBuilder.Build();
-                        return context => module(context);
-                    });
-                });
-            }
+            var moduleManager = app.ApplicationServices.GetRequiredService<IModuleManager>();
+            moduleManager.UseModules(app);
         }
 
-        static IApplicationBuilder GetModuleBuilder(
-            IApplicationBuilder app, 
-            ModuleDescriptor moduleDescriptor)
+        public static void UseModule(this IApplicationBuilder app, string moduleName)
         {
-            var moduleStartup = moduleDescriptor.ModuleServices.GetRequiredService<IModuleStartup>();
-            var moduleBuilder = new ApplicationBuilder(moduleDescriptor.ModuleServices, app.ServerFeatures);
-            return moduleBuilder.UseRequestServices(moduleStartup.Configure);
+            app.UseModule(moduleName, moduleName);
         }
 
+        public static void UseModule(this IApplicationBuilder app, string moduleName, string moduleInstanceId)
+        {
+            app.UseModule(moduleName, moduleInstanceId, PathString.Empty);
+        }
+
+        public static void UseModule(this IApplicationBuilder app, string moduleName, string moduleInstanceId, PathString pathBase)
+        {
+            var moduleManager = app.ApplicationServices.GetService<IModuleManager>();
+            moduleManager.UseModule(app, moduleName, moduleInstanceId, pathBase);
+        }
     }
 }

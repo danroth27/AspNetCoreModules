@@ -16,22 +16,22 @@ namespace Microsoft.AspNetCore.Modules.Mvc
 {
     public static class ModulesHtmlHelperExtensions
     {
-        public static Task<IHtmlContent> ModulePartialAsync(this IHtmlHelper htmlHelper, string partialViewName, string moduleName)
+        public static Task<IHtmlContent> ModulePartialAsync(this IHtmlHelper htmlHelper, string partialViewName, string moduleInstanceId)
         {
-            return ModulePartialAsync(htmlHelper, partialViewName, moduleName, htmlHelper.ViewData.Model, viewData: null);
+            return ModulePartialAsync(htmlHelper, partialViewName, moduleInstanceId, htmlHelper.ViewData.Model, viewData: null);
         }
 
-        public static Task<IHtmlContent> ModulePartialAsync(this IHtmlHelper htmlHelper, string partialViewName, string moduleName, object model, ViewDataDictionary viewData)
+        public static Task<IHtmlContent> ModulePartialAsync(this IHtmlHelper htmlHelper, string partialViewName, string moduleInstanceId, object model, ViewDataDictionary viewData)
         {
             var viewContext = htmlHelper.ViewContext;
             var env = viewContext.HttpContext.RequestServices.GetService<IHostingEnvironment>();
-            if (env.ApplicationName == moduleName)
+            if (env.ApplicationName == moduleInstanceId)
             {
                 return htmlHelper.PartialAsync(partialViewName, model, viewData);
             }
 
             var moduleManager = viewContext.HttpContext.RequestServices.GetRequiredService<IModuleManager>();
-            var module = moduleManager.GetModule(moduleName);
+            var module = moduleManager.GetModuleInstance(moduleInstanceId);
             var moduleHtmlHelper = module.ModuleServices.GetService<IHtmlHelper>();
             var moduleViewContext = new ViewContext(viewContext, viewContext.View, viewContext.ViewData, viewContext.Writer);
             moduleViewContext.HttpContext = new ModuleHttpContext(viewContext.HttpContext.Features, module.ModuleServices);
@@ -56,7 +56,7 @@ namespace Microsoft.AspNetCore.Modules.Mvc
             }
             catch (InvalidOperationException)
             {
-                foreach (var module in moduleManager.GetModules())
+                foreach (var module in moduleManager.GetModuleDescriptors())
                 {
                     try
                     {
@@ -107,7 +107,7 @@ namespace Microsoft.AspNetCore.Modules.Mvc
             string linkText,
             string actionName,
             string controllerName,
-            string moduleName,
+            string moduleInstanceId,
             string protocol,
             string hostname,
             string fragment,
@@ -121,12 +121,12 @@ namespace Microsoft.AspNetCore.Modules.Mvc
 
             var viewContext = htmlHelper.ViewContext;
             var moduleManager = viewContext.HttpContext.RequestServices.GetService<IModuleManager>();
-            var module = moduleManager.GetModule(moduleName);
+            var module = moduleManager.GetModuleInstance(moduleInstanceId);
 
             var moduleViewContext = new ViewContext(viewContext, viewContext.View, viewContext.ViewData, viewContext.Writer);
             moduleViewContext.RouteData = new RouteData(moduleViewContext.RouteData);
             var sharedRoutesManager = module.ModuleServices.GetService<ISharedRoutesManager>();
-            var moduleRouteBuilder = sharedRoutesManager.GetRoutes(moduleName);
+            var moduleRouteBuilder = sharedRoutesManager.GetRoutes(moduleInstanceId);
             moduleViewContext.RouteData.Routers.Add(moduleRouteBuilder.Build());
             moduleViewContext.HttpContext = new ModuleHttpContext(
                 viewContext.HttpContext.Features, module.ModuleServices, module.PathBase);

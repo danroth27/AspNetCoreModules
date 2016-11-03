@@ -1,4 +1,9 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Builder.Internal;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,40 +14,101 @@ namespace Microsoft.AspNetCore.Modules
 {
     public class ModuleManager : IModuleManager
     {
-        IDictionary<string, ModuleDescriptor> _modules = new ConcurrentDictionary<string, ModuleDescriptor>();
+        IDictionary<string, ModuleDescriptor> _modulesDescriptors = new ConcurrentDictionary<string, ModuleDescriptor>();
+        IDictionary<string, ModuleInstance> _moduleInstances = new ConcurrentDictionary<string, ModuleInstance>();
+        ModulesOptions _options;
 
-        public ModuleManager(IEnumerable<IModuleLoader> moduleLoaders, IServiceCollection hostingServices)
+        public ModuleManager(IEnumerable<IModuleLoader> moduleLoaders, IServiceCollection hostingServices, IOptions<ModulesOptions> options)
         {
+            _options = options.Value;
+
             var sharedModuleServices = new ServiceCollection();
-            var moduleDescriptors = moduleLoaders.SelectMany(moduleLoader => moduleLoader.GetModuleDescriptors())
-                .Select(moduleDescriptor =>
-                {
-                    var moduleStartup = moduleDescriptor.ModuleServices.GetRequiredService<IModuleStartup>();
-                    moduleStartup.ConfigureSharedServices(sharedModuleServices);
-                    return moduleDescriptor;
-                })
-                .Select(moduleDescriptor => moduleDescriptor.AddSharedServices(sharedModuleServices));
+            var moduleDescriptors = moduleLoaders.SelectMany(moduleLoader => moduleLoader.GetModuleDescriptors());
 
             foreach (var moduleDescriptor in moduleDescriptors)
             {
-                _modules[moduleDescriptor.Name] = moduleDescriptor;
+                var moduleStartup = moduleDescriptor.ModuleServiceCollection.BuildServiceProvider().GetRequiredService<IModuleStartup>();
+                moduleStartup.ConfigureSharedServices(sharedModuleServices);
+                _modulesDescriptors[moduleDescriptor.Name] = moduleDescriptor;
             }
 
             SharedServices = sharedModuleServices.BuildServiceProvider();
         }
 
-        public IServiceProvider SharedServices { get; set; }
+        public IServiceProvider SharedServices { get; }
 
-        public ModuleDescriptor GetModule(string name)
+        public ModuleDescriptor GetModuleDescriptor(string name)
         {
             ModuleDescriptor module;
-            _modules.TryGetValue(name, out module);
+            _modulesDescriptors.TryGetValue(name, out module);
             return module;
         }
 
-        public IEnumerable<ModuleDescriptor> GetModules()
+        public IEnumerable<ModuleDescriptor> GetModuleDescriptors()
         {
-            return _modules.Values;
+            return _modulesDescriptors.Values;
+        }
+
+        public IEnumerable<ModuleInstance> GetModuleInstances()
+        {
+            return _moduleInstances.Values;
+        }
+
+        public ModuleInstance GetModuleInstance(string moduleInstanceId)
+        {
+            ModuleInstance moduleInstance;
+            _moduleInstances.TryGetValue(moduleInstanceId, out moduleInstance);
+            return moduleInstance;
+        }
+        
+        public IEnumerable<ModuleInstance> UseModules(IApplicationBuilder app)
+        {
+            foreach (var moduleDescriptor in GetModuleDescriptors())
+            {
+                var moduleName = moduleDescriptor.Name;
+                PathString pathBase;
+                _options.PathBase.TryGetValue(moduleName, out pathBase);
+                UseModule(app, moduleName, moduleName, pathBase);
+            }
+            return _moduleInstances.Values;
+        }
+
+        public ModuleInstance UseModule(IApplicationBuilder app, string moduleName, string moduleInstanceId, PathString pathBase)
+        {
+            if (_moduleInstances.ContainsKey(moduleInstanceId))
+            {
+                throw new InvalidOperationException($"A module with instance ID {moduleInstanceId} is already in use");
+            }
+
+            if (!_modulesDescriptors.ContainsKey(moduleName))
+            {
+                throw new InvalidOperationException($"Module {moduleName} is not loaded");
+            }
+
+            var moduleInstance = GetModuleDescriptor(moduleName).CreateModuleInstance(moduleInstanceId, pathBase);
+            _moduleInstances.Add(moduleInstance.ModuleInstanceId, moduleInstance);
+
+            var moduleBuilder = GetModuleBuilder(app, moduleInstance);
+            app.UseWhenPath(pathBase, branch =>
+            {
+                branch.Use(next =>
+                {
+                    moduleBuilder.Run(next);
+                    var module = moduleBuilder.Build();
+                    return context => module(context);
+                });
+            });
+
+            return moduleInstance;
+        }
+
+        static IApplicationBuilder GetModuleBuilder(
+            IApplicationBuilder app,
+            ModuleInstance moduleInstance)
+        {
+            var moduleStartup = moduleInstance.ModuleServices.GetRequiredService<IModuleStartup>();
+            var moduleBuilder = new ApplicationBuilder(moduleInstance.ModuleServices, app.ServerFeatures);
+            return moduleBuilder.UseRequestServices(moduleStartup.Configure);
         }
     }
 }

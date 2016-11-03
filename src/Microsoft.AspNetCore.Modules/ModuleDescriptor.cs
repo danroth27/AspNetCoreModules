@@ -9,51 +9,44 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
+using Microsoft.Extensions.PlatformAbstractions;
+using Microsoft.AspNetCore.Hosting.Internal;
+using System.IO;
 
 namespace Microsoft.AspNetCore.Modules
 {
     public class ModuleDescriptor
     {
         IServiceCollection _hostingServices;
+        IHostingEnvironment _env;
 
-        public ModuleDescriptor(string name, Type moduleStartupType, IHostingEnvironment moduleEnv, PathString pathBase, IServiceCollection hostingServices)
+        public ModuleDescriptor(Type moduleStartupType, IServiceCollection hostingServices, IHostingEnvironment env)
         {
             _hostingServices = hostingServices;
-            Name = name;
+            _env = env;
             ModuleStartupType = moduleStartupType;
-            HostingEnvironment = moduleEnv;
-            PathBase = pathBase;
+            HostingEnvironment = GetModuleHostingEnvironment();
+            Name = HostingEnvironment.ApplicationName;
+            ModuleServiceCollection = GetModuleServices();
             Properties = new ConcurrentDictionary<object, object>();
-            ModuleServices = GetModuleServices();
         }
 
         public string Name { get; }
 
         public IHostingEnvironment HostingEnvironment { get; }
 
-        public IServiceProvider ModuleServices { get; private set; }
-
-        public PathString PathBase { get; }
+        public IServiceCollection ModuleServiceCollection { get; }
 
         public Type ModuleStartupType { get; }
 
         public IDictionary<object, object> Properties { get; }
 
-        IServiceProvider GetModuleServices()
+        IServiceCollection GetModuleServices()
         {
             var moduleServices = GetInitialModuleServiceCollection();
             var moduleStartup = GetModuleStartup(moduleServices);
             moduleStartup.ConfigureServices(moduleServices);
-            return moduleServices.BuildServiceProvider();
-        }
-
-        IServiceProvider GetModuleServices(IServiceCollection sharedServices)
-        {
-            var moduleServices = GetInitialModuleServiceCollection();
-            var moduleStartup = GetModuleStartup(moduleServices);
-            moduleServices.Add(sharedServices);
-            moduleStartup.ConfigureServices(moduleServices);
-            return moduleServices.BuildServiceProvider();
+            return moduleServices;
         }
 
         IServiceCollection GetInitialModuleServiceCollection()
@@ -62,6 +55,7 @@ namespace Microsoft.AspNetCore.Modules
             // TODO: This filtering shouldn't be necessary - fix MVC to pick the last service instead of the first
             moduleServices.Add(_hostingServices.Where(sd => sd.ServiceType != typeof(IHostingEnvironment)));
             moduleServices.AddSingleton(HostingEnvironment);
+            moduleServices.AddSingleton<ModuleInstanceIdProvider>();
             return moduleServices;
         }
 
@@ -85,10 +79,15 @@ namespace Microsoft.AspNetCore.Modules
             return moduleHostingServiceProvider.GetRequiredService<IModuleStartup>();
         }
 
-        public ModuleDescriptor AddSharedServices(IServiceCollection sharedServices)
+        IHostingEnvironment GetModuleHostingEnvironment()
         {
-            ModuleServices = GetModuleServices(sharedServices);
-            return this;
+            var moduleAssemblyName = ModuleStartupType.GetTypeInfo().Assembly.GetName().Name;
+            var moduleEnv = new HostingEnvironment();
+            moduleEnv.Initialize(
+                applicationName: moduleAssemblyName,
+                contentRootPath: Path.Combine(PlatformServices.Default.Application.ApplicationBasePath, "Modules", moduleAssemblyName),
+                options: new WebHostOptions() { Environment = _env.EnvironmentName });
+            return moduleEnv;
         }
     }
 }

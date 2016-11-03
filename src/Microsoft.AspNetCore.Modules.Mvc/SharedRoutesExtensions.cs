@@ -11,11 +11,10 @@ namespace Microsoft.AspNetCore.Modules.Mvc
 {
     public static class SharedRoutesExtensions
     {
-        public static void ShareRoutes(this IRouteBuilder routes)
+        public static void ShareRoutes(this IRouteBuilder routes, string name)
         {
             var moduleRouteManager = routes.ApplicationBuilder.ApplicationServices.GetRequiredService<ISharedRoutesManager>();
-            var env = routes.ApplicationBuilder.ApplicationServices.GetRequiredService<IHostingEnvironment>();
-            moduleRouteManager.ShareRoutes(env.ApplicationName, routes);
+            moduleRouteManager.ShareRoutes(name, routes);
         }
 
         public static void AddSharedRoutes(this IServiceCollection services)

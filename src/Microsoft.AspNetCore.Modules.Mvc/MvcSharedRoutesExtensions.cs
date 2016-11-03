@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Modules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,26 +12,18 @@ namespace Microsoft.AspNetCore.Modules.Mvc
 {
     public static class MvcSharedRoutesExtensions
     {
-        public static IApplicationBuilder UseMvcWithSharedRoutes(this IApplicationBuilder app, Action<IRouteBuilder> configureRoutes)
-        {
-            return app.UseMvc(routes =>
-            {
-                configureRoutes(routes);
-                routes.ShareRoutes();
-            });
-        }
-
         public static IMvcBuilder AddMvcWithSharedRoutes(this IServiceCollection services)
         {
             services.AddSharedRoutes();
             return services.AddMvc();
         }
-
-        public static IMvcBuilder AddMvcForModules(this IServiceCollection services, Action<MvcOptions> configureOptions)
+        public static IApplicationBuilder UseMvcWithSharedRoutes(this IApplicationBuilder app, Action<IRouteBuilder> configureRoutes)
         {
-            var builder = services.AddMvcWithSharedRoutes();
-            builder.Services.Configure(configureOptions);
-            return builder;
+            return app.UseMvc(routes =>
+            {
+                configureRoutes(routes);
+                routes.ShareRoutes(app.ApplicationServices.GetRequiredService<ModuleInstanceIdProvider>().ModuleInstanceId);
+            });
         }
     }
 }
