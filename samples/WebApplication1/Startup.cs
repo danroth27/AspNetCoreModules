@@ -69,6 +69,9 @@ namespace WebApplication1
 
             app.UseModules();
 
+            app.UseModule("Module1", "Module1.1", "/Module1.1");
+            app.UseModule("Module1", "Module1.2", "/Module1.2");
+
             app.UseStaticFiles();
 
             app.UseMvc(routes =>
