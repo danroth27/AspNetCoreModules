@@ -1,4 +1,5 @@
 {
+  "version": "1.0.0-*",
   "userSecretsId": "aspnet-Microsoft.AspNetCore.Identity.Module-75660199-cc5b-479a-8e8b-7cf001117f41",
 
   "dependencies": {
