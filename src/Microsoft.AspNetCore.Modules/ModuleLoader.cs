@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyModel;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.PlatformAbstractions;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -19,17 +20,19 @@ namespace Microsoft.AspNetCore.Modules
     {
         IHostingEnvironment _env;
         IServiceCollection _hostingServices;
+        IEnumerable<IConfigureModuleServices> _configureModuleServices;
 
-        public ModuleLoader(IHostingEnvironment env, IServiceCollection hostingServices)
+        public ModuleLoader(IHostingEnvironment env, IServiceCollection hostingServices, IEnumerable<IConfigureModuleServices> configureModuleServices)
         {
             _env = env;
             _hostingServices = hostingServices;
+            _configureModuleServices = configureModuleServices;
         }
 
         public IEnumerable<ModuleDescriptor> GetModuleDescriptors()
         {
             return GetModuleStartupTypes(_env.ApplicationName)
-                .Select(moduleStartupType => new ModuleDescriptor(moduleStartupType, _hostingServices, _env));
+                .Select(moduleStartupType => new ModuleDescriptor(moduleStartupType, _hostingServices, _env, _configureModuleServices));
         }
 
         IEnumerable<Type> GetModuleStartupTypes(string entryAssemblyName)

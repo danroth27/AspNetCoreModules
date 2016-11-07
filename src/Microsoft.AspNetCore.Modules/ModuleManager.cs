@@ -17,10 +17,18 @@ namespace Microsoft.AspNetCore.Modules
         IDictionary<string, ModuleDescriptor> _modulesDescriptors = new ConcurrentDictionary<string, ModuleDescriptor>();
         IDictionary<string, ModuleInstance> _moduleInstances = new ConcurrentDictionary<string, ModuleInstance>();
         ModulesOptions _options;
+        IDictionary<string, IEnumerable<IConfigureModuleInstanceServices>> _configureModuleInstanceServices;
 
-        public ModuleManager(IEnumerable<IModuleLoader> moduleLoaders, IServiceCollection hostingServices, IOptions<ModulesOptions> options)
+        public ModuleManager(
+            IEnumerable<IModuleLoader> moduleLoaders,
+            IServiceCollection hostingServices,
+            IOptions<ModulesOptions> options,
+            IEnumerable<IConfigureModuleInstanceServices> configureModuleInstanceServices)
         {
             _options = options.Value;
+            _configureModuleInstanceServices = new ConcurrentDictionary<string, IEnumerable<IConfigureModuleInstanceServices>>(configureModuleInstanceServices
+                .GroupBy(config => config.ModuleInstanceId)
+                .ToDictionary(group => group.Key, group => group.AsEnumerable()));
 
             var sharedModuleServices = new ServiceCollection();
             var moduleDescriptors = moduleLoaders.SelectMany(moduleLoader => moduleLoader.GetModuleDescriptors());
@@ -85,7 +93,9 @@ namespace Microsoft.AspNetCore.Modules
                 throw new InvalidOperationException($"Module {moduleName} is not loaded");
             }
 
-            var moduleInstance = GetModuleDescriptor(moduleName).CreateModuleInstance(moduleInstanceId, pathBase);
+            var moduleDescriptor = GetModuleDescriptor(moduleName);
+            var moduleInstanceServices = GetModuleInstanceServices(moduleInstanceId);
+            var moduleInstance = new ModuleInstance(moduleDescriptor, moduleInstanceId, pathBase, moduleInstanceServices);
             _moduleInstances.Add(moduleInstance.ModuleInstanceId, moduleInstance);
 
             var moduleBuilder = GetModuleBuilder(app, moduleInstance);
@@ -100,6 +110,19 @@ namespace Microsoft.AspNetCore.Modules
             });
 
             return moduleInstance;
+        }
+
+        IEnumerable<IConfigureModuleInstanceServices> GetModuleInstanceServices(string moduleInstanceId)
+        {
+            IEnumerable<IConfigureModuleInstanceServices> configureModuleServices;
+            if (_configureModuleInstanceServices.TryGetValue(moduleInstanceId, out configureModuleServices))
+            {
+                return configureModuleServices;
+            }
+            else
+            {
+                return new IConfigureModuleInstanceServices[0];
+            }
         }
 
         static IApplicationBuilder GetModuleBuilder(

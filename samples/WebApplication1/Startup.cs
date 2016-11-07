@@ -34,15 +34,8 @@ namespace WebApplication1
         {
             services.AddViewTemplates();
 
-            services.Configure<IdentityModuleOptions>(options =>
-            {
-                options.ConnectionString = Configuration.GetConnectionString("DefaultConnection");
-            });
-
-            services.AddModules(options =>
-            {
-                options.PathBase["Module1"] = "/Module1";
-            });
+            services.AddModules(Configuration)
+                .ConfigureIdentityModule(Configuration);
 
             services.AddMvc().IgnoreModules();
 

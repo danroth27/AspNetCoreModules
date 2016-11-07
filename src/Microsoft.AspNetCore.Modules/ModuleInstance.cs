@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -10,15 +12,21 @@ namespace Microsoft.AspNetCore.Modules
 {
     public class ModuleInstance
     {
-        public ModuleInstance(ModuleDescriptor moduleDescriptor, string moduleInstanceId, PathString pathBase)
+        public ModuleInstance(ModuleDescriptor moduleDescriptor, string moduleInstanceId, PathString pathBase, IEnumerable<IConfigureModuleInstanceServices> configureModuleServices)
         {
-            moduleDescriptor.ModuleServiceCollection.AddSingleton<ModuleInstanceIdProvider>(new ModuleInstanceIdProvider(moduleInstanceId));
-
             ModuleDescriptor = moduleDescriptor;
             ModuleInstanceId = moduleInstanceId;
-            ModuleServices = moduleDescriptor.ModuleServiceCollection.BuildServiceProvider();
             PathBase = pathBase;
             Properties = new ConcurrentDictionary<object, object>();
+
+            IServiceCollection moduleInstanceServices = new ServiceCollection();
+            moduleInstanceServices.Add(moduleDescriptor.ModuleServiceCollection);
+            moduleInstanceServices.AddSingleton<ModuleInstanceIdProvider>(new ModuleInstanceIdProvider(moduleInstanceId));
+            foreach (var config in configureModuleServices)
+            {
+                config.ConfigureServices(moduleInstanceServices);
+            }
+            ModuleServices = moduleInstanceServices.BuildServiceProvider();
         }
 
         public string ModuleInstanceId { get; }

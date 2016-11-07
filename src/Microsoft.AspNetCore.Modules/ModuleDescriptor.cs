@@ -19,11 +19,18 @@ namespace Microsoft.AspNetCore.Modules
     {
         IServiceCollection _hostingServices;
         IHostingEnvironment _env;
+        IEnumerable<IConfigureModuleServices> _configureModuleServices;
 
-        public ModuleDescriptor(Type moduleStartupType, IServiceCollection hostingServices, IHostingEnvironment env)
+        public ModuleDescriptor(
+            Type moduleStartupType,
+            IServiceCollection hostingServices,
+            IHostingEnvironment env,
+            IEnumerable<IConfigureModuleServices> configureModuleServices)
         {
             _hostingServices = hostingServices;
             _env = env;
+            _configureModuleServices = configureModuleServices;
+
             ModuleStartupType = moduleStartupType;
             HostingEnvironment = GetModuleHostingEnvironment();
             Name = HostingEnvironment.ApplicationName;
@@ -43,19 +50,16 @@ namespace Microsoft.AspNetCore.Modules
 
         IServiceCollection GetModuleServices()
         {
-            var moduleServices = GetInitialModuleServiceCollection();
-            var moduleStartup = GetModuleStartup(moduleServices);
-            moduleStartup.ConfigureServices(moduleServices);
-            return moduleServices;
-        }
-
-        IServiceCollection GetInitialModuleServiceCollection()
-        {
             var moduleServices = new ServiceCollection();
             // TODO: This filtering shouldn't be necessary - fix MVC to pick the last service instead of the first
             moduleServices.Add(_hostingServices.Where(sd => sd.ServiceType != typeof(IHostingEnvironment)));
             moduleServices.AddSingleton(HostingEnvironment);
-            moduleServices.AddSingleton<ModuleInstanceIdProvider>();
+            foreach (var config in _configureModuleServices.Where(config => config.ModuleName == Name))
+            {
+                config.ConfigureServices(moduleServices);
+            }
+            var moduleStartup = GetModuleStartup(moduleServices);
+            moduleStartup.ConfigureServices(moduleServices);
             return moduleServices;
         }
 
@@ -67,7 +71,6 @@ namespace Microsoft.AspNetCore.Modules
             }
             else
             {
-
                 moduleServices.AddSingleton<IModuleStartup>(sp =>
                 {
                     var hostingEnvironment = sp.GetRequiredService<IHostingEnvironment>();
