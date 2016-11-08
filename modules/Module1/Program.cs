@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Modules;
 
 namespace Module1
 {
@@ -14,6 +16,10 @@ namespace Module1
             var host = new WebHostBuilder()
                 .UseKestrel()
                 .UseContentRoot(Directory.GetCurrentDirectory())
+                .ConfigureServices(services =>
+                {
+                    services.AddSingleton(new ModuleInstanceIdProvider("Module1"));
+                })
                 .UseStartup<Startup>()
                 .Build();
 
