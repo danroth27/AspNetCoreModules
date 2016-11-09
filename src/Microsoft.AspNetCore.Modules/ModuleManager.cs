@@ -1,13 +1,18 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Builder.Internal;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.ObjectPool;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Microsoft.AspNetCore.Modules
@@ -17,33 +22,63 @@ namespace Microsoft.AspNetCore.Modules
         IDictionary<string, ModuleDescriptor> _modulesDescriptors = new ConcurrentDictionary<string, ModuleDescriptor>();
         IDictionary<string, ModuleInstance> _moduleInstances = new ConcurrentDictionary<string, ModuleInstance>();
         ModulesOptions _options;
-        IDictionary<string, IEnumerable<IConfigureModuleInstanceServices>> _configureModuleInstanceServices;
 
-        public ModuleManager(
-            IEnumerable<IModuleLoader> moduleLoaders,
-            IServiceCollection hostingServices,
-            IOptions<ModulesOptions> options,
-            IEnumerable<IConfigureModuleInstanceServices> configureModuleInstanceServices)
+        IServiceCollection _hostingServices;
+        IServiceCollection _sharedModuleServices;
+
+        public ModuleManager(IServiceCollection services, ModulesOptions options)
         {
-            _options = options.Value;
-            _configureModuleInstanceServices = new ConcurrentDictionary<string, IEnumerable<IConfigureModuleInstanceServices>>(configureModuleInstanceServices
-                .GroupBy(config => config.ModuleInstanceId)
-                .ToDictionary(group => group.Key, group => group.AsEnumerable()));
+            _options = options;
 
-            var sharedModuleServices = new ServiceCollection();
-            var moduleDescriptors = moduleLoaders.SelectMany(moduleLoader => moduleLoader.GetModuleDescriptors());
+            _hostingServices = CreateHostingServices(services);
+            _sharedModuleServices = new ServiceCollection();
+            var moduleLoadContext = new ModuleLoadContext()
+            {
+                HostingEnvironment = GetServiceFromCollection<IHostingEnvironment>(services),
+                HostingServices = _hostingServices,
+                ModuleOptions = options.ModuleOptions
+            };
+            var moduleDescriptors = _options.ModuleLoaders
+                .SelectMany(moduleLoader => moduleLoader.GetModuleDescriptors(moduleLoadContext));
 
             foreach (var moduleDescriptor in moduleDescriptors)
             {
                 var moduleStartup = moduleDescriptor.ModuleServiceCollection.BuildServiceProvider().GetRequiredService<IModuleStartup>();
-                moduleStartup.ConfigureSharedServices(sharedModuleServices);
+                moduleStartup.ConfigureSharedServices(_sharedModuleServices);
                 _modulesDescriptors[moduleDescriptor.Name] = moduleDescriptor;
             }
 
-            SharedServices = sharedModuleServices.BuildServiceProvider();
+            services.Add(_sharedModuleServices);
         }
 
-        public IServiceProvider SharedServices { get; }
+        private static T GetServiceFromCollection<T>(IServiceCollection services)
+        {
+            return (T)services
+                .LastOrDefault(d => d.ServiceType == typeof(T))
+                ?.ImplementationInstance;
+        }
+
+        static IServiceCollection CreateHostingServices(IServiceCollection services)
+        {
+            var hostingServices = new ServiceCollection();
+
+            hostingServices.AddSingleton(GetServiceFromCollection<ILoggerFactory>(services));
+            hostingServices.AddLogging();
+            hostingServices.AddSingleton(GetServiceFromCollection<DiagnosticListener>(services));
+            hostingServices.AddSingleton(GetServiceFromCollection<DiagnosticSource>(services));
+            hostingServices.AddOptions();
+
+            // This is used as part of supporting ConfigureContainer on startup
+            hostingServices.AddTransient<IServiceProviderFactory<IServiceCollection>, DefaultServiceProviderFactory>();
+
+            // The object pool isn't preserved today from the hosting container - possible bug?
+            hostingServices.AddSingleton<ObjectPoolProvider, DefaultObjectPoolProvider>();
+
+            // TODO: Need a way to pass along the IServer
+            // hostingServices.AddSingleton<IServer>(server)
+
+            return hostingServices;
+        }
 
         public ModuleDescriptor GetModuleDescriptor(string name)
         {
@@ -74,9 +109,9 @@ namespace Microsoft.AspNetCore.Modules
             foreach (var moduleDescriptor in GetModuleDescriptors())
             {
                 var moduleName = moduleDescriptor.Name;
-                PathString pathBase;
-                _options.PathBase.TryGetValue(moduleName, out pathBase);
-                UseModule(app, moduleName, moduleName, pathBase);
+                ModuleInstanceOptions moduleInstanceOptions;
+                _options.ModuleInstanceOptions.TryGetValue(moduleName, out moduleInstanceOptions);
+                UseModule(app, moduleName, moduleName, moduleInstanceOptions?.PathBase);
             }
             return _moduleInstances.Values;
         }
@@ -94,8 +129,15 @@ namespace Microsoft.AspNetCore.Modules
             }
 
             var moduleDescriptor = GetModuleDescriptor(moduleName);
-            var moduleInstanceServices = GetModuleInstanceServices(moduleInstanceId);
-            var moduleInstance = new ModuleInstance(moduleDescriptor, moduleInstanceId, pathBase, moduleInstanceServices);
+            ModuleInstanceOptions moduleInstanceOptions;
+            _options.ModuleInstanceOptions.TryGetValue(moduleInstanceId, out moduleInstanceOptions);
+            var moduleInstance = new ModuleInstance(
+                moduleDescriptor,
+                moduleInstanceId,
+                pathBase,
+                _sharedModuleServices,
+                app.ApplicationServices,
+                moduleInstanceOptions);
             _moduleInstances.Add(moduleInstance.ModuleInstanceId, moduleInstance);
 
             var moduleBuilder = GetModuleBuilder(app, moduleInstance);
@@ -110,19 +152,6 @@ namespace Microsoft.AspNetCore.Modules
             });
 
             return moduleInstance;
-        }
-
-        IEnumerable<IConfigureModuleInstanceServices> GetModuleInstanceServices(string moduleInstanceId)
-        {
-            IEnumerable<IConfigureModuleInstanceServices> configureModuleServices;
-            if (_configureModuleInstanceServices.TryGetValue(moduleInstanceId, out configureModuleServices))
-            {
-                return configureModuleServices;
-            }
-            else
-            {
-                return new IConfigureModuleInstanceServices[0];
-            }
         }
 
         static IApplicationBuilder GetModuleBuilder(

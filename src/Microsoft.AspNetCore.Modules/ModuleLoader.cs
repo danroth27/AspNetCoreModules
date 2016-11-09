@@ -18,33 +18,11 @@ namespace Microsoft.AspNetCore.Modules
 {
     public class ModuleLoader : IModuleLoader
     {
-        IHostingEnvironment _env;
-        IServiceCollection _hostingServices;
-        IEnumerable<IConfigureModuleServices> _configureModuleServices;
-
-        public ModuleLoader(IHostingEnvironment env, IServiceCollection hostingServices, IEnumerable<IConfigureModuleServices> configureModuleServices)
+        public IEnumerable<ModuleDescriptor> GetModuleDescriptors(ModuleLoadContext context)
         {
-            _env = env;
-            _hostingServices = hostingServices;
-            _configureModuleServices = configureModuleServices;
-        }
-
-        public IEnumerable<ModuleDescriptor> GetModuleDescriptors()
-        {
-            return GetModuleStartupTypes(_env.ApplicationName)
-                .Select(moduleStartupType => new ModuleDescriptor(moduleStartupType, _hostingServices, _env, _configureModuleServices));
-        }
-
-        IEnumerable<Type> GetModuleStartupTypes(string entryAssemblyName)
-        {
-            var entryAssembly = Assembly.Load(new AssemblyName(entryAssemblyName));
-            var context = DependencyContext.Load(entryAssembly);
-            return context.RuntimeLibraries
-                .Where(lib => lib.Name != entryAssemblyName)
-                .SelectMany(lib => lib.GetDefaultAssemblyNames(context))
-                .Select(assemblyName => ModuleStartupLoader.FindStartupType(assemblyName.Name, _env.EnvironmentName))
-                .Where(type => type != null)
-                .ToList();
+            var env = context.HostingEnvironment;
+            return ModuleLoaderHelpers.GetModuleStartupTypes(env.ApplicationName, env.EnvironmentName)
+                .Select(moduleStartupType => new ModuleDescriptor(moduleStartupType, context.HostingServices, env, context.ModuleOptions));
         }
     }
 }

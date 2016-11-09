@@ -21,120 +21,14 @@ namespace Microsoft.AspNetCore.Modules
     {
         public static IServiceCollection AddModules(this IServiceCollection services)
         {
-            // Hack to get the hosting services
-            services.AddSingleton(GetHostingServices(services));
-
-            services.AddTransient<IModuleLoader, ModuleLoader>();
-            services.AddSingleton<IModuleManager, ModuleManager>();
-
-            return services;
+            return services.AddModules(optionsSetup: null);
         }
 
-        public static IServiceCollection AddModules(this IServiceCollection services, Action<ModulesOptions> configureOptions)
+        public static IServiceCollection AddModules(this IServiceCollection services, Action<ModulesOptions> optionsSetup)
         {
-            services.AddModules();
-            services.Configure(configureOptions);
-
-            return services;
-        }
-
-        public static IServiceCollection AddModules(this IServiceCollection services, IConfiguration config)
-        {
-            services.AddModules();
-            services.Configure<ModulesOptions>(options =>
-            {
-                foreach (var moduleConfig in config.GetModules().GetChildren())
-                {
-                    var pathBase = moduleConfig["PathBase"];
-                    if (!String.IsNullOrEmpty(pathBase))
-                    {
-                        options.PathBase[moduleConfig.Key] = pathBase;
-                    }
-                }
-            });
-
-            return services;
-        }
-
-        static IServiceCollection GetHostingServices(IServiceCollection services)
-        {
-            var hostingServices = new ServiceCollection();
-            hostingServices.Add(services);
-            return hostingServices;
-        }
-
-        public static IServiceCollection AddForModule(
-            this IServiceCollection services,
-            string moduleName,
-            Action<IServiceCollection> setupServices)
-        {
-            return services.AddSingleton<IConfigureModuleServices>(new ConfigureModuleServices(moduleName, setupServices));
-        }
-
-        public static IServiceCollection AddForModuleInstance(
-            this IServiceCollection services,
-            string moduleInstanceId,
-            Action<IServiceCollection> setupServices)
-        {
-            return services.AddSingleton<IConfigureModuleInstanceServices>(new ConfigureModuleInstanceServices(moduleInstanceId, setupServices));
-        }
-
-        public static IServiceCollection ConfigureModule<TOptions>(
-            this IServiceCollection services,
-            string moduleName,
-            Action<TOptions> setupOptions)
-            where TOptions : class
-        {
-            return services.AddForModule(moduleName, moduleServices =>
-            {
-                moduleServices.Configure<TOptions>(setupOptions);
-            });
-        }
-
-        public static IServiceCollection ConfigureModule<TOptions>(
-            this IServiceCollection services,
-            string moduleName,
-            IConfiguration config)
-            where TOptions : class
-        {
-            return services.AddForModule(moduleName, moduleServices =>
-            {
-                moduleServices.Configure<TOptions>(config.GetModules().GetSection(moduleName));
-            });
-        }
-
-        public static IServiceCollection ConfigureModuleInstance<TOptions>(
-            this IServiceCollection services,
-            string moduleInstanceId,
-            Action<TOptions> setupOptions)
-            where TOptions : class
-        {
-            return services.AddForModuleInstance(moduleInstanceId, moduleServices =>
-            {
-                moduleServices.Configure<TOptions>(setupOptions);
-            });
-        }
-
-        public static IServiceCollection ConfigureModuleInstance<TOptions>(
-            this IServiceCollection services,
-            string moduleInstanceId,
-            IConfiguration config)
-            where TOptions : class
-        {
-            return services.AddForModuleInstance(moduleInstanceId, moduleServices =>
-            {
-                moduleServices.Configure<TOptions>(config.GetModuleInstances().GetSection(moduleInstanceId));
-            });
-        }
-
-        public static IConfigurationSection GetModules(this IConfiguration config)
-        {
-            return config.GetSection("Modules");
-        }
-
-        public static IConfigurationSection GetModuleInstances(this IConfiguration config)
-        {
-            return config.GetSection("ModuleInstances");
+            var modulesOptions = new ModulesOptions();
+            optionsSetup?.Invoke(modulesOptions);
+            return services.AddSingleton<IModuleManager>(new ModuleManager(services, modulesOptions));
         }
 
         public static void UseModules(this IApplicationBuilder app)

@@ -19,66 +19,75 @@ namespace Microsoft.AspNetCore.Modules
     {
         IServiceCollection _hostingServices;
         IHostingEnvironment _env;
-        IEnumerable<IConfigureModuleServices> _configureModuleServices;
+        IDictionary<string, ModuleOptions> _moduleOptions;
 
         public ModuleDescriptor(
             Type moduleStartupType,
             IServiceCollection hostingServices,
             IHostingEnvironment env,
-            IEnumerable<IConfigureModuleServices> configureModuleServices)
+            IDictionary<string, ModuleOptions> moduleOptions)
         {
             _hostingServices = hostingServices;
             _env = env;
-            _configureModuleServices = configureModuleServices;
+            _moduleOptions = moduleOptions;
 
             ModuleStartupType = moduleStartupType;
-            HostingEnvironment = GetModuleHostingEnvironment();
-            Name = HostingEnvironment.ApplicationName;
-            ModuleServiceCollection = GetModuleServices();
-            Properties = new ConcurrentDictionary<object, object>();
+            ModuleHostingEnvironment = GetModuleHostingEnvironment();
+            Name = ModuleHostingEnvironment.ApplicationName;
+            SetupModuleServices();
         }
 
         public string Name { get; }
 
-        public IHostingEnvironment HostingEnvironment { get; }
+        public IHostingEnvironment ModuleHostingEnvironment { get; }
 
-        public IServiceCollection ModuleServiceCollection { get; }
+        public IServiceCollection ModuleServiceCollection { get; } = new ServiceCollection();
+
+        public IServiceCollection SharedServices { get; } = new ServiceCollection();
 
         public Type ModuleStartupType { get; }
 
-        public IDictionary<object, object> Properties { get; }
+        public IDictionary<object, object> Properties { get; } = new ConcurrentDictionary<object, object>();
 
-        IServiceCollection GetModuleServices()
+        void SetupModuleServices()
         {
-            var moduleServices = new ServiceCollection();
-            // TODO: This filtering shouldn't be necessary - fix MVC to pick the last service instead of the first
-            moduleServices.Add(_hostingServices.Where(sd => sd.ServiceType != typeof(IHostingEnvironment)));
-            moduleServices.AddSingleton(HostingEnvironment);
-            foreach (var config in _configureModuleServices.Where(config => config.ModuleName == Name))
+            AddHostingServices();
+            // Module services specified via options should be availabe in the module startup constructor
+            ModuleOptions moduleOptions;
+            if (_moduleOptions.TryGetValue(Name, out moduleOptions))
             {
-                config.ConfigureServices(moduleServices);
+                foreach (var configureServices in _moduleOptions[Name].ConfigureServices)
+                {
+                    configureServices(ModuleServiceCollection);
+                }
             }
-            var moduleStartup = GetModuleStartup(moduleServices);
-            moduleStartup.ConfigureServices(moduleServices);
-            return moduleServices;
+            var moduleStartup = GetModuleStartup();
+            moduleStartup.ConfigureServices(ModuleServiceCollection);
+            moduleStartup.ConfigureSharedServices(SharedServices);
         }
 
-        IModuleStartup GetModuleStartup(IServiceCollection moduleServices)
+        void AddHostingServices()
+        {
+            ModuleServiceCollection.Add(_hostingServices);
+            ModuleServiceCollection.AddSingleton(ModuleHostingEnvironment);
+        }
+
+        IModuleStartup GetModuleStartup()
         {
             if (typeof(IModuleStartup).GetTypeInfo().IsAssignableFrom(ModuleStartupType))
             {
-                moduleServices.AddSingleton(typeof(IModuleStartup), ModuleStartupType);
+                ModuleServiceCollection.AddSingleton(typeof(IModuleStartup), ModuleStartupType);
             }
             else
             {
-                moduleServices.AddSingleton<IModuleStartup>(sp =>
+                ModuleServiceCollection.AddSingleton<IModuleStartup>(sp =>
                 {
                     var hostingEnvironment = sp.GetRequiredService<IHostingEnvironment>();
                     return new ConventionBasedModuleStartup(
                         ModuleStartupLoader.LoadMethods(sp, ModuleStartupType, hostingEnvironment.EnvironmentName));
                 });
             }
-            var moduleHostingServiceProvider = moduleServices.BuildServiceProvider();
+            var moduleHostingServiceProvider = ModuleServiceCollection.BuildServiceProvider();
             return moduleHostingServiceProvider.GetRequiredService<IModuleStartup>();
         }
 

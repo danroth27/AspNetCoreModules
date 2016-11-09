@@ -8,6 +8,6 @@ namespace Microsoft.AspNetCore.Modules
 {
     public interface IModuleLoader
     {
-        IEnumerable<ModuleDescriptor> GetModuleDescriptors();
+        IEnumerable<ModuleDescriptor> GetModuleDescriptors(ModuleLoadContext context);
     }
 }

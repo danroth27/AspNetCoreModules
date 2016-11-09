@@ -7,8 +7,6 @@ namespace Microsoft.AspNetCore.Modules
 {
     public interface IModuleManager
     {
-        IServiceProvider SharedServices { get; }
-
         ModuleDescriptor GetModuleDescriptor(string moduleName);
 
         IEnumerable<ModuleDescriptor> GetModuleDescriptors();

@@ -8,10 +8,11 @@ namespace Microsoft.AspNetCore.Modules
 {
     public class ModulesOptions
     {
-        public ModulesOptions()
-        {
-            PathBase = new Dictionary<string, PathString>();
-        }
-        public IDictionary<string, PathString> PathBase { get; }
+        public IList<IModuleLoader> ModuleLoaders { get; } = new List<IModuleLoader>() { new ModuleLoader() };
+
+        public IDictionary<string, ModuleOptions> ModuleOptions { get; } = new Dictionary<string, ModuleOptions>();
+
+        public IDictionary<string, ModuleInstanceOptions> ModuleInstanceOptions { get; } = new Dictionary<string, ModuleInstanceOptions>();
+
     }
 }
