@@ -12,6 +12,7 @@
       "type": "build"
     },
     "Microsoft.AspNetCore.Server.Kestrel": "1.1.0-preview1-final",
+    "Microsoft.AspNetCore.Server.IisIntegration": "1.1.0-preview1-final",
     "Microsoft.AspNetCore.Modules.Mvc": "1.0.0-*",
     "Microsoft.AspNetCore.ViewTemplates": "1.0.0-*"
   },

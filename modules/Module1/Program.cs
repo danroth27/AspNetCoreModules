@@ -16,6 +16,7 @@ namespace Module1
             var host = new WebHostBuilder()
                 .UseKestrel()
                 .UseContentRoot(Directory.GetCurrentDirectory())
+                .UseIISIntegration()
                 .ConfigureServices(services =>
                 {
                     services.AddSingleton(new ModuleInstanceIdProvider("Module1"));
