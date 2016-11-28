@@ -21,5 +21,11 @@ namespace Microsoft.AspNetCore.Modules.Mvc
 
             return mvcBuilder;
         }
+
+        public static IMvcBuilder AddViewOverrides(this IMvcBuilder mvcBuilder)
+        {
+            mvcBuilder.Services.AddViewOverrides();
+            return mvcBuilder;
+        }
     }
 }

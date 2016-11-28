@@ -39,7 +39,8 @@ namespace Microsoft.AspNetCore.Identity.Module
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
-            services.AddMvc();
+            services.AddMvc()
+                .AddViewOverrides();
 
             // Add application services.
             services.AddTransient<IEmailSender, AuthMessageSender>();

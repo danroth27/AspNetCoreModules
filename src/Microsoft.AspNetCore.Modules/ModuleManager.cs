@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Modules.Internal;
 
 namespace Microsoft.AspNetCore.Modules
 {
@@ -34,7 +35,7 @@ namespace Microsoft.AspNetCore.Modules
             _sharedModuleServices = new ServiceCollection();
             var moduleLoadContext = new ModuleLoadContext()
             {
-                HostingEnvironment = GetServiceFromCollection<IHostingEnvironment>(services),
+                HostingEnvironment = services.GetServiceFromCollection<IHostingEnvironment>(),
                 HostingServices = _hostingServices,
                 ModuleOptions = options.ModuleOptions
             };
@@ -51,21 +52,14 @@ namespace Microsoft.AspNetCore.Modules
             services.Add(_sharedModuleServices);
         }
 
-        private static T GetServiceFromCollection<T>(IServiceCollection services)
-        {
-            return (T)services
-                .LastOrDefault(d => d.ServiceType == typeof(T))
-                ?.ImplementationInstance;
-        }
-
         static IServiceCollection CreateHostingServices(IServiceCollection services)
         {
             var hostingServices = new ServiceCollection();
 
-            hostingServices.AddSingleton(GetServiceFromCollection<ILoggerFactory>(services));
+            hostingServices.AddSingleton(services.GetServiceFromCollection<ILoggerFactory>());
             hostingServices.AddLogging();
-            hostingServices.AddSingleton(GetServiceFromCollection<DiagnosticListener>(services));
-            hostingServices.AddSingleton(GetServiceFromCollection<DiagnosticSource>(services));
+            hostingServices.AddSingleton(services.GetServiceFromCollection<DiagnosticListener>());
+            hostingServices.AddSingleton(services.GetServiceFromCollection<DiagnosticSource>());
             hostingServices.AddOptions();
 
             // This is used as part of supporting ConfigureContainer on startup
@@ -76,6 +70,12 @@ namespace Microsoft.AspNetCore.Modules
 
             // TODO: Need a way to pass along the IServer
             // hostingServices.AddSingleton<IServer>(server)
+
+            var env = services.GetServiceFromCollection<IHostingEnvironment>();
+            if (env != null)
+            {
+                hostingServices.AddSingleton<IRootHostingEnvironmentAccessor>(new RootHostingEnvironmentAccessor(env));
+            }
 
             return hostingServices;
         }
