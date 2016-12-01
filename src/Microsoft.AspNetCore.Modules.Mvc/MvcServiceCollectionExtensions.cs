@@ -8,6 +8,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Modules.Internal;
 using System.IO;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Mvc.Razor.Compilation;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Builder;
 
 namespace Microsoft.AspNetCore.Modules.Mvc
 {
@@ -15,22 +20,9 @@ namespace Microsoft.AspNetCore.Modules.Mvc
     {
         public static IServiceCollection AddViewOverrides(this IServiceCollection services)
         {
-            var env = services.GetServiceFromCollection<IHostingEnvironment>();
-            if (env == null)
-            {
-                throw new InvalidOperationException("Cannot access hosting environment for module");
-            }
-
-            var rootEnv = services.GetServiceFromCollection<IRootHostingEnvironmentAccessor>()?.RootHostingEnvironment;
-            if (rootEnv == null)
-            {
-                throw new InvalidOperationException("Cannot access root hosting environment from module");
-            }
-
-            services.Configure<RazorViewEngineOptions>(options =>
-            {
-                options.FileProviders.Insert(0, new PhysicalFileProvider(Path.Combine(rootEnv.ContentRootPath, "Modules", env.ApplicationName)));
-            });
+            services.AddTransient<IConfigureOptions<RazorViewEngineOptions>, ViewOverridesOptionsSetup>();
+            services.AddTransient<IRazorPageFactoryProvider, ModulesRazorPageFactoryProvider>();
+            services.AddTransient<IApplicationFeatureProvider<ViewsFeature>, ModulesViewOverridesFeatureProvider>();
             return services;
         }
     }

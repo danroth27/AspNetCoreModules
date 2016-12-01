@@ -12,6 +12,7 @@ using System.Reflection;
 using Microsoft.Extensions.PlatformAbstractions;
 using Microsoft.AspNetCore.Hosting.Internal;
 using System.IO;
+using Microsoft.Extensions.FileProviders;
 
 namespace Microsoft.AspNetCore.Modules
 {

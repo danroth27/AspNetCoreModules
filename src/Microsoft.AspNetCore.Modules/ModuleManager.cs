@@ -25,14 +25,12 @@ namespace Microsoft.AspNetCore.Modules
         ModulesOptions _options;
 
         IServiceCollection _hostingServices;
-        IServiceCollection _sharedModuleServices;
 
         public ModuleManager(IServiceCollection services, ModulesOptions options)
         {
             _options = options;
 
             _hostingServices = CreateHostingServices(services);
-            _sharedModuleServices = new ServiceCollection();
             var moduleLoadContext = new ModuleLoadContext()
             {
                 HostingEnvironment = services.GetServiceFromCollection<IHostingEnvironment>(),
@@ -45,12 +43,12 @@ namespace Microsoft.AspNetCore.Modules
             foreach (var moduleDescriptor in moduleDescriptors)
             {
                 var moduleStartup = moduleDescriptor.ModuleServiceCollection.BuildServiceProvider().GetRequiredService<IModuleStartup>();
-                moduleStartup.ConfigureSharedServices(_sharedModuleServices);
+                moduleStartup.ConfigureSharedServices(SharedServices);
                 _modulesDescriptors[moduleDescriptor.Name] = moduleDescriptor;
             }
-
-            services.Add(_sharedModuleServices);
         }
+
+        public IServiceCollection SharedServices { get; } = new ServiceCollection();
 
         static IServiceCollection CreateHostingServices(IServiceCollection services)
         {
@@ -135,7 +133,7 @@ namespace Microsoft.AspNetCore.Modules
                 moduleDescriptor,
                 moduleInstanceId,
                 pathBase,
-                _sharedModuleServices,
+                SharedServices,
                 app.ApplicationServices,
                 moduleInstanceOptions);
             _moduleInstances.Add(moduleInstance.ModuleInstanceId, moduleInstance);

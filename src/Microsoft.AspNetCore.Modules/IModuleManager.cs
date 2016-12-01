@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 
@@ -7,6 +8,8 @@ namespace Microsoft.AspNetCore.Modules
 {
     public interface IModuleManager
     {
+        IServiceCollection SharedServices { get; }
+
         ModuleDescriptor GetModuleDescriptor(string moduleName);
 
         IEnumerable<ModuleDescriptor> GetModuleDescriptors();

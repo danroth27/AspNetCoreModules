@@ -28,6 +28,7 @@ namespace Microsoft.AspNetCore.Modules
             AddSharedServices(sharedServices, appServiceProvider);
             ModuleServiceCollection.Add(moduleDescriptor.ModuleServiceCollection);
             ModuleServiceCollection.AddSingleton<ModuleInstanceIdProvider>(new ModuleInstanceIdProvider(moduleInstanceId));
+            ModuleServiceCollection.AddSingleton<IRootServiceProvider>(new RootServiceProvider(appServiceProvider));
             if (options != null)
             {
                 foreach (var configureServices in options.ConfigureServices)

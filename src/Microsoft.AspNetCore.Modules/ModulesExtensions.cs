@@ -28,7 +28,9 @@ namespace Microsoft.AspNetCore.Modules
         {
             var modulesOptions = new ModulesOptions();
             optionsSetup?.Invoke(modulesOptions);
-            return services.AddSingleton<IModuleManager>(new ModuleManager(services, modulesOptions));
+            var moduleManager = new ModuleManager(services, modulesOptions);
+            services.AddSingleton<IModuleManager>(moduleManager);
+            return services.Add(moduleManager.SharedServices);
         }
 
         public static void UseModules(this IApplicationBuilder app)
