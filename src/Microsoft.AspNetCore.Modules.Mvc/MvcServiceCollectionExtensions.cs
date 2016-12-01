@@ -20,9 +20,7 @@ namespace Microsoft.AspNetCore.Modules.Mvc
     {
         public static IServiceCollection AddViewOverrides(this IServiceCollection services)
         {
-            services.AddTransient<IConfigureOptions<RazorViewEngineOptions>, ViewOverridesOptionsSetup>();
             services.AddTransient<IRazorPageFactoryProvider, ModulesRazorPageFactoryProvider>();
-            services.AddTransient<IApplicationFeatureProvider<ViewsFeature>, ModulesViewOverridesFeatureProvider>();
             return services;
         }
     }
