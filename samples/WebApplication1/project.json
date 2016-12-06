@@ -27,7 +27,8 @@
     "Module1": "1.0.0-*",
     "Microsoft.AspNetCore.Identity.Module": "1.0.0-*",
     "Microsoft.AspNetCore.ViewTemplates": "1.0.0-*",
-    "Microsoft.AspNetCore.Modules.Mvc": "1.0.0-*"
+    "Microsoft.AspNetCore.Modules.Mvc": "1.0.0-*",
+    "Microsoft.AspNetCore.Swagger.Module": "1.0.0-*"
   },
 
   "tools": {

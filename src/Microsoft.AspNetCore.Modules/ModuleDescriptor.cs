@@ -96,9 +96,14 @@ namespace Microsoft.AspNetCore.Modules
         {
             var moduleAssemblyName = ModuleStartupType.GetTypeInfo().Assembly.GetName().Name;
             var moduleEnv = new HostingEnvironment();
+            var contentRootPath = Path.Combine(PlatformServices.Default.Application.ApplicationBasePath, "Modules", moduleAssemblyName);
+            if (!Directory.Exists(contentRootPath))
+            {
+                Directory.CreateDirectory(contentRootPath);
+            }
             moduleEnv.Initialize(
                 applicationName: moduleAssemblyName,
-                contentRootPath: Path.Combine(PlatformServices.Default.Application.ApplicationBasePath, "Modules", moduleAssemblyName),
+                contentRootPath: contentRootPath,
                 options: new WebHostOptions() { Environment = _env.EnvironmentName });
             return moduleEnv;
         }
