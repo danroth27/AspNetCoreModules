@@ -69,12 +69,6 @@ namespace Microsoft.AspNetCore.Modules
             // TODO: Need a way to pass along the IServer
             // hostingServices.AddSingleton<IServer>(server)
 
-            var env = services.GetServiceFromCollection<IHostingEnvironment>();
-            if (env != null)
-            {
-                hostingServices.AddSingleton<IRootHostingEnvironmentAccessor>(new RootHostingEnvironmentAccessor(env));
-            }
-
             return hostingServices;
         }
 

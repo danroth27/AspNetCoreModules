@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Hosting.Internal;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyModel;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -154,6 +155,12 @@ namespace Microsoft.AspNetCore.Modules
                 throw new InvalidOperationException(String.Format("The assembly '{0}' failed to load.", startupAssemblyName));
             }
 
+            return FindStartupType(assembly, environmentName);
+        }
+
+        public static Type FindStartupType(Assembly assembly, string environmentName)
+        {
+            var startupAssemblyName = assembly.GetName().Name;
             var startupNameWithEnv = "Startup" + environmentName;
             var startupNameWithoutEnv = "Startup";
 
@@ -180,6 +187,18 @@ namespace Microsoft.AspNetCore.Modules
             }
 
             return type;
+        }
+
+        public static IEnumerable<Type> GetModuleStartupTypes(string entryAssemblyName, string environmentName)
+        {
+            var entryAssembly = Assembly.Load(new AssemblyName(entryAssemblyName));
+            var context = DependencyContext.Load(entryAssembly);
+            return context.RuntimeLibraries
+                .Where(lib => lib.Name != entryAssemblyName)
+                .SelectMany(lib => lib.GetDefaultAssemblyNames(context))
+                .Select(assemblyName => ModuleStartupLoader.FindStartupType(assemblyName.Name, environmentName))
+                .Where(type => type != null)
+                .ToList();
         }
     }
 }

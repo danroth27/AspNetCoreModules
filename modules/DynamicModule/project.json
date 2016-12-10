@@ -1,24 +1,24 @@
-{
-  "version": "1.0.0-*",
+﻿{
   "dependencies": {
     "Microsoft.NETCore.App": {
       "version": "1.1.0",
       "type": "platform"
     },
     "Microsoft.AspNetCore.Diagnostics": "1.1.0",
+    "Microsoft.AspNetCore.Modules": "1.0.0-*",
     "Microsoft.AspNetCore.Mvc": "1.1.0",
     "Microsoft.AspNetCore.Razor.Tools": {
       "version": "1.1.0-preview4-final",
       "type": "build"
     },
-    "Microsoft.AspNetCore.Server.Kestrel": "1.1.0",
     "Microsoft.AspNetCore.Server.IISIntegration": "1.1.0",
-    "Microsoft.AspNetCore.Modules.Mvc": "1.0.0-*",
-    "Microsoft.AspNetCore.ViewTemplates": "1.0.0-*"
+    "Microsoft.AspNetCore.Server.Kestrel": "1.1.0",
+    "Microsoft.Extensions.Logging.Console": "1.1.0"
   },
 
   "tools": {
-    "Microsoft.AspNetCore.Razor.Tools": "1.1.0-preview4-final"
+    "Microsoft.AspNetCore.Razor.Tools": "1.1.0-preview4-final",
+    "Microsoft.AspNetCore.Server.IISIntegration.Tools": "1.1.0-preview4-final"
   },
 
   "frameworks": {
@@ -33,6 +33,12 @@
   "buildOptions": {
     "emitEntryPoint": true,
     "preserveCompilationContext": true
+  },
+
+  "runtimeOptions": {
+    "configProperties": {
+      "System.GC.Server": true
+    }
   },
 
   "publishOptions": {
