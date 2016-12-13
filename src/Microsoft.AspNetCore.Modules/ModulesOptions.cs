@@ -9,7 +9,11 @@ namespace Microsoft.AspNetCore.Modules
 {
     public class ModulesOptions
     {
-        public IList<IModuleLoader> ModuleLoaders { get; } = new List<IModuleLoader>() { new ModuleLoader() };
+        public IList<IModuleLoader> ModuleLoaders { get; } = new List<IModuleLoader>()
+        {
+            new ModuleLoader(),
+            new DynamicModuleLoader()
+        };
 
         public IDictionary<string, ModuleOptions> ModuleOptions { get; } = new Dictionary<string, ModuleOptions>();
 

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.PlatformAbstractions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,19 +16,30 @@ namespace Microsoft.AspNetCore.Modules
         public IEnumerable<ModuleDescriptor> GetModuleDescriptors(ModuleLoadContext context)
         {
             var env = context.HostingEnvironment;
-            var moduleDirs = env.ContentRootFileProvider.GetDirectoryContents("Modules")
-                .Where(fileInfo => fileInfo.IsDirectory);
+            var modulesPath = Path.Combine(PlatformServices.Default.Application.ApplicationBasePath, "Modules");
+            var moduleDirs = Directory.EnumerateDirectories(modulesPath);
 
             foreach (var moduleDir in moduleDirs)
-            {
-                var moduleAssemblyLoadContenxt = new ModuleAssemblyLoadContext(moduleDir.PhysicalPath);
-                var moduleAssemblyName = new AssemblyName(moduleDir.Name);
-                var moduleAssembly = moduleAssemblyLoadContenxt.LoadFromAssemblyName(moduleAssemblyName);
+            {   
+                if (HasDynamicModule(moduleDir))
+                {
+                    var moduleDirInfo = new DirectoryInfo(moduleDir);
+                    var moduleAssemblyLoadContenxt = new ModuleAssemblyLoadContext(moduleDir);
+                    var moduleAssemblyName = new AssemblyName(moduleDirInfo.Name);
+                    var moduleAssembly = moduleAssemblyLoadContenxt.LoadFromAssemblyName(moduleAssemblyName);
 
-                var moduleStartupType = ModuleStartupLoader.FindStartupType(moduleAssembly, env.EnvironmentName);
+                    var moduleStartupType = ModuleStartupLoader.FindStartupType(moduleAssembly, env.EnvironmentName);
 
-                yield return new ModuleDescriptor(moduleStartupType, context.HostingServices, env, context.ModuleOptions);
+                    yield return new ModuleDescriptor(moduleStartupType, context.HostingServices, env, context.ModuleOptions);
+                }
             }
+        }
+
+        bool HasDynamicModule(string moduleDir)
+        {
+            // TODO: Add real dynamic module detection logic here
+            var moduleDirInfo = new DirectoryInfo(moduleDir);
+            return File.Exists(Path.Combine(moduleDir, moduleDirInfo.Name + ".dll"));
         }
     }
 }
