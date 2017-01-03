@@ -2,6 +2,7 @@
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.PlatformAbstractions;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,33 +14,65 @@ namespace Microsoft.AspNetCore.Modules
 {
     public class DynamicModuleLoader : IModuleLoader
     {
-        public IEnumerable<ModuleDescriptor> GetModuleDescriptors(ModuleLoadContext context)
+        public DynamicModuleLoader()
         {
-            var env = context.HostingEnvironment;
-            var modulesPath = Path.Combine(PlatformServices.Default.Application.ApplicationBasePath, "Modules");
-            var moduleDirs = Directory.EnumerateDirectories(modulesPath);
+            AssemblyLoadContext.Default.Resolving += ResolveModuleAssemby;
+        }
 
-            foreach (var moduleDir in moduleDirs)
-            {   
-                if (HasDynamicModule(moduleDir))
+        public Assembly ResolveModuleAssemby(AssemblyLoadContext context, AssemblyName assemblyName)
+        {
+            var assemblyPaths = GetModuleDirs()
+                .SelectMany(moduleDir => Directory.EnumerateFiles(moduleDir, $"{assemblyName.Name}.dll"));
+
+            AssemblyName liftedAssemblyName = null;
+            foreach (var path in assemblyPaths)
+            {
+                var moduleAssemblyName = AssemblyLoadContext.GetAssemblyName(path);
+                if (liftedAssemblyName == null || moduleAssemblyName.Version > liftedAssemblyName.Version)
                 {
-                    var moduleDirInfo = new DirectoryInfo(moduleDir);
-                    var moduleAssemblyLoadContenxt = new ModuleAssemblyLoadContext(moduleDir);
-                    var moduleAssemblyName = new AssemblyName(moduleDirInfo.Name);
-                    var moduleAssembly = moduleAssemblyLoadContenxt.LoadFromAssemblyName(moduleAssemblyName);
-
-                    var moduleStartupType = ModuleStartupLoader.FindStartupType(moduleAssembly, env.EnvironmentName);
-
-                    yield return new ModuleDescriptor(moduleStartupType, context.HostingServices, env, context.ModuleOptions);
+                    liftedAssemblyName = moduleAssemblyName;
                 }
             }
+
+            return liftedAssemblyName != null ? context.LoadFromAssemblyName(liftedAssemblyName) : null;
+        }
+
+        AssemblyName LiftAssemblyVersion(AssemblyName assemblyName1, AssemblyName assemblyName2)
+        {
+            return assemblyName1.Version > assemblyName2.Version ? assemblyName1 : assemblyName2;
+        }
+
+        public IEnumerable<ModuleDescriptor> GetModuleDescriptors(ModuleLoadContext context)
+        {
+            return GetModuleDirs().Where(HasDynamicModule).Select(moduleDir => GetDynamicModuleDescriptor(moduleDir, context));
         }
 
         bool HasDynamicModule(string moduleDir)
         {
-            // TODO: Add real dynamic module detection logic here
             var moduleDirInfo = new DirectoryInfo(moduleDir);
             return File.Exists(Path.Combine(moduleDir, moduleDirInfo.Name + ".dll"));
+        }
+
+        ModuleDescriptor GetDynamicModuleDescriptor(string moduleDir, ModuleLoadContext context)
+        {
+            var env = context.HostingEnvironment;
+            var moduleAssemblyPath = GetDynamicModuleAssemblyPath(moduleDir);
+            var moduleAssembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(moduleAssemblyPath);
+            var moduleStartupType = ModuleStartupLoader.FindStartupType(moduleAssembly, env.EnvironmentName);
+            return new ModuleDescriptor(moduleStartupType, context.HostingServices, env, context.ModuleOptions);
+        }
+
+        string GetDynamicModuleAssemblyPath(string moduleDir)
+        {
+            var moduleDirInfo = new DirectoryInfo(moduleDir);
+            return Path.Combine(moduleDir, $"{moduleDirInfo.Name}.dll");
+        }
+
+        public string ModulesPath { get; set; } = Path.Combine(PlatformServices.Default.Application.ApplicationBasePath, "Modules");
+
+        IEnumerable<string> GetModuleDirs()
+        {
+            return Directory.EnumerateDirectories(ModulesPath);
         }
     }
 }
